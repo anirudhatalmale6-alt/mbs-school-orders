@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.0');
+define('MBS_SO_VER', '1.0.1');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -78,24 +78,43 @@ function mbs_shortcode($atts) {
     $prog = $programs[$key];
 
     wp_enqueue_style('mbs-order', MBS_SO_URL . 'assets/mbs-order.css', array(), MBS_SO_VER);
-    wp_enqueue_script('mbs-order', MBS_SO_URL . 'assets/mbs-order.js', array(), MBS_SO_VER, true);
 
     // Build the config the front-end renders from (single source of truth = PHP config above).
     $prog_js = $prog;
     $prog_js['logoUrl'] = !empty($prog['logo']) ? MBS_SO_URL . 'assets/' . $prog['logo'] : '';
 
-    wp_localize_script('mbs-order', 'MBS', array(
+    $config = array(
         'ajax'       => admin_url('admin-ajax.php'),
         'nonce'      => wp_create_nonce('mbs_add'),
         'cartUrl'    => wc_get_cart_url(),
         'programKey' => $key,
         'program'    => $prog_js,
-    ));
+    );
 
     ob_start();
     include MBS_SO_DIR . 'templates/form.php';
-    return ob_get_clean();
+    $html = ob_get_clean();
+
+    // Print the config + JS INLINE (not as an enqueued external file). Aggressive optimizers
+    // on the host (WP Rocket, SiteGround Optimizer) were combining the external file into a
+    // bundle that 404'd, so the form never initialised. Inline can't be combined away.
+    // data-no-optimize / data-cfasync tell those plugins to leave this block alone.
+    $js = file_get_contents(MBS_SO_DIR . 'assets/mbs-order.js');
+    $html .= "\n<script data-no-optimize=\"1\" data-no-minify=\"1\" data-cfasync=\"false\">"
+           . "/* mbs-school-orders inline */\nwindow.MBS = " . wp_json_encode($config) . ";\n"
+           . $js . "\n</script>\n";
+
+    return $html;
 }
+
+/* -------------------------------------------------------------------------
+ *  Keep optimizer plugins from combining/delaying our inline script
+ * ---------------------------------------------------------------------- */
+add_filter('rocket_delay_js_exclusions', function ($e) { $e[] = 'mbs-school-orders'; $e[] = 'window.MBS'; return $e; });
+add_filter('rocket_excluded_inline_js_content', function ($e) { $e[] = 'mbs-school-orders'; return $e; });
+add_filter('sgo_js_minify_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
+add_filter('sgo_javascript_combine_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
+add_filter('sgo_js_async_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
 
 /* -------------------------------------------------------------------------
  *  AJAX: add one athlete's order to the WooCommerce cart.

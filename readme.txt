@@ -41,4 +41,4 @@ Each program can have its own prices, sports, and division list.
 Drop a transparent PNG into /assets and set 'logo' => 'yourfile.png' in the program.
 The included redondo-white.png is the Sea Hawks mark.
 
-Version 1.0.0
+Version 1.0.1

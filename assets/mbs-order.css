@@ -198,3 +198,25 @@ footer b{color:#fff;font-family:'Barlow Condensed';letter-spacing:.08em;text-tra
 .mbs-app{--pagepad:0}
 .mbs-app header.masthead{border-radius:16px;overflow:hidden}
 .mbs-app main{padding:26px 0 10px}
+
+/* ---- v1.0.1 theme-override guards (beat Qode's global heading/link colors) ---- */
+.mbs-app header.masthead h1.title{color:#fff !important}
+.mbs-app header.masthead h1.title .yr{color:var(--scarlet) !important;-webkit-text-stroke:1px rgba(255,255,255,.15)}
+.mbs-app header.masthead .eyebrow{color:var(--gold) !important}
+.mbs-app header.masthead .subhead{color:#c3cfe0 !important}
+.mbs-app header.masthead .studio{color:#b9c6dc !important}
+.mbs-app header.masthead .cartbtn,.mbs-app header.masthead .cartbtn:hover{color:#fff !important}
+.mbs-app header.masthead .mh-card h4{color:var(--gold) !important}
+.mbs-app header.masthead .mh-card li{color:#dbe4f0 !important}
+.mbs-app .crest .ini{color:#fff !important}
+.mbs-app .crest .mas{color:var(--gold) !important}
+.mbs-app .sum-live h4{color:var(--gold) !important}
+.mbs-app .sum-live .sum-total .v{color:var(--gold) !important}
+.mbs-app .sum-live .l,.mbs-app .sum-live .sum-line span:last-child{color:#fff !important}
+.mbs-app .panel-h h3{color:var(--ink) !important}
+.mbs-app .panel-h .n{color:#fff !important}
+.mbs-app .grp-title{color:var(--navy) !important}
+.mbs-app .addcart,.mbs-app .btn-primary,.mbs-app .btn-navy{color:#fff !important}
+/* Qode wraps content narrow + adds link underlines; relax inside our app */
+.mbs-app a{text-decoration:none !important;box-shadow:none !important}
+.mbs-app .inp,.mbs-app select.inp{color:var(--ink) !important}
