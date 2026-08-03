@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.1');
+define('MBS_SO_VER', '1.0.2');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -82,6 +82,18 @@ function mbs_shortcode($atts) {
     // Build the config the front-end renders from (single source of truth = PHP config above).
     $prog_js = $prog;
     $prog_js['logoUrl'] = !empty($prog['logo']) ? MBS_SO_URL . 'assets/' . $prog['logo'] : '';
+
+    // Turn each item's 'img' filename into a full URL the browser can load in the sample popup.
+    if (!empty($prog_js['packages'])) {
+        foreach ($prog_js['packages'] as $k => $pk) {
+            $prog_js['packages'][$k]['imgUrl'] = !empty($pk['img']) ? MBS_SO_URL . 'assets/' . $pk['img'] : '';
+        }
+    }
+    if (!empty($prog_js['addons'])) {
+        foreach ($prog_js['addons'] as $i => $a) {
+            $prog_js['addons'][$i]['imgUrl'] = !empty($a['img']) ? MBS_SO_URL . 'assets/' . $a['img'] : '';
+        }
+    }
 
     $config = array(
         'ajax'       => admin_url('admin-ajax.php'),

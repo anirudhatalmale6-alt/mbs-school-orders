@@ -41,4 +41,10 @@ Each program can have its own prices, sports, and division list.
 Drop a transparent PNG into /assets and set 'logo' => 'yourfile.png' in the program.
 The included redondo-white.png is the Sea Hawks mark.
 
-Version 1.0.1
+== Sample product photos ==
+Each item's "See sample" popup can show a real photo. Drop a JPG/PNG into
+/assets/samples and set 'img' => 'samples/yourphoto.jpg' on that package or add-on
+in includes/programs.php. Leave 'img' off and the item shows a neutral placeholder.
+To swap a photo later, just replace the file in /assets/samples with the same name.
+
+Version 1.0.2

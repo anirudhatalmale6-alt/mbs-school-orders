@@ -27,7 +27,7 @@
       "<text x='260' y='282' fill='#9fb0c8' font-family='Arial,sans-serif' font-size='13' text-anchor='middle'>Sample product photo</text></svg>";
     return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
   }
-  function openLb(label) { $('lbImg').src = sampleImg(label); $('lbCap').textContent = label; $('lightbox').classList.add('show'); }
+  function openLb(label, img) { $('lbImg').src = (img && img.length) ? img : sampleImg(label); $('lbCap').textContent = label; $('lightbox').classList.add('show'); }
   function closeLb() { $('lightbox').classList.remove('show'); }
 
   /* ---------- program header + selects ---------- */
@@ -79,7 +79,7 @@
     $('pkgDetail').innerHTML =
       '<div class="pic">' + p.tag + '</div>' +
       '<div><div style="font-weight:700;font-size:16px">' + p.name + '</div><div class="inc">' + p.inc + '</div>' +
-      (p.value === 'NONE' ? '' : '<button class="seebtn" type="button" style="margin-top:9px" data-lb="' + p.name + ' — sample">' + CAM + ' See sample</button>') +
+      (p.value === 'NONE' ? '' : '<button class="seebtn" type="button" style="margin-top:9px" data-lb="' + p.name + ' — sample" data-img="' + (p.imgUrl || '') + '">' + CAM + ' See sample</button>') +
       '</div><div class="pr">' + (p.price ? money(p.price) : '—') + '</div>';
     renderLive();
   }
@@ -92,7 +92,7 @@
       ADDONS.filter(function (a) { return a.group === g; }).forEach(function (a) {
         h += '<div class="addon" id="ad_' + a.id + '">' +
           '<div class="txt"><div class="t">' + a.t + '</div><div class="p">' + money(a.p) + ' each</div></div>' +
-          '<button class="seebtn" type="button" title="See sample" aria-label="See sample" data-lb="' + a.t + '">' + CAM + '</button>' +
+          '<button class="seebtn" type="button" title="See sample" aria-label="See sample" data-lb="' + a.t + '" data-img="' + (a.imgUrl || '') + '">' + CAM + '</button>' +
           '<div class="stepper"><button type="button" data-step="-1" data-id="' + a.id + '">−</button><span class="v" id="q_' + a.id + '">0</span><button type="button" data-step="1" data-id="' + a.id + '">+</button></div>' +
           '</div>';
         if (a.buddy) {
@@ -198,7 +198,7 @@
       var step = e.target.closest('[data-step]');
       if (step) { setQty(step.getAttribute('data-id'), parseInt(step.getAttribute('data-step'), 10)); return; }
       var lb = e.target.closest('[data-lb]');
-      if (lb) { openLb(lb.getAttribute('data-lb')); }
+      if (lb) { openLb(lb.getAttribute('data-lb'), lb.getAttribute('data-img')); }
     });
   }
 
