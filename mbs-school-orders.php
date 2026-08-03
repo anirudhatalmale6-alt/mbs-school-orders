@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.2');
+define('MBS_SO_VER', '1.0.3');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -77,7 +77,11 @@ function mbs_shortcode($atts) {
 
     $prog = $programs[$key];
 
-    wp_enqueue_style('mbs-order', MBS_SO_URL . 'assets/mbs-order.css', array(), MBS_SO_VER);
+    // Load the display + body webfonts the design uses (Anton / Barlow / Barlow Condensed /
+    // JetBrains Mono). Without these a visitor's browser falls back to a system font whose
+    // taller metrics can overlap the headline — and the design just looks off.
+    wp_enqueue_style('mbs-fonts', 'https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono&display=swap', array(), null);
+    wp_enqueue_style('mbs-order', MBS_SO_URL . 'assets/mbs-order.css', array('mbs-fonts'), MBS_SO_VER);
 
     // Build the config the front-end renders from (single source of truth = PHP config above).
     $prog_js = $prog;

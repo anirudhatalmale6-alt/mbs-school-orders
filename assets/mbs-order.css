@@ -43,9 +43,9 @@ header.masthead::after{content:"";position:absolute;inset:0;pointer-events:none;
 .logo-hint{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7f8ea7;font-family:'Barlow Condensed';font-weight:600}
 .eyebrow{font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:14px;color:var(--gold);display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:"";width:34px;height:2px;background:var(--gold)}
-h1.title{font-family:'Anton',sans-serif;font-weight:400;line-height:.92;letter-spacing:.01em;font-size:clamp(42px,7.5vw,88px);text-transform:uppercase;margin:14px 0 6px;text-shadow:0 2px 0 rgba(0,0,0,.2)}
+h1.title{font-family:'Anton',sans-serif;font-weight:400;line-height:.98;letter-spacing:.01em;font-size:clamp(42px,7.5vw,88px);text-transform:uppercase;margin:14px 0 20px;padding-bottom:2px;text-shadow:0 2px 0 rgba(0,0,0,.2)}
 h1.title .yr{color:var(--scarlet);-webkit-text-stroke:1px rgba(255,255,255,.15)}
-.subhead{color:#c3cfe0;font-size:17px;max-width:46ch}
+.subhead{color:#c3cfe0;font-size:17px;max-width:46ch;margin-top:6px}
 .mh-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:20px 20px 18px;backdrop-filter:blur(6px)}
 .mh-card h4{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:14px;color:var(--gold);margin-bottom:12px;font-weight:600}
 .mh-card ol{list-style:none;counter-reset:s;display:grid;gap:11px}
@@ -200,10 +200,10 @@ footer b{color:#fff;font-family:'Barlow Condensed';letter-spacing:.08em;text-tra
 .mbs-app main{padding:26px 0 10px}
 
 /* ---- v1.0.1 theme-override guards (beat Qode's global heading/link colors) ---- */
-.mbs-app header.masthead h1.title{color:#fff !important}
+.mbs-app header.masthead h1.title{color:#fff !important;line-height:.98 !important;margin:14px 0 20px !important;padding-bottom:2px !important;height:auto !important;max-height:none !important;min-height:0 !important;overflow:visible !important;display:block !important}
 .mbs-app header.masthead h1.title .yr{color:var(--scarlet) !important;-webkit-text-stroke:1px rgba(255,255,255,.15)}
-.mbs-app header.masthead .eyebrow{color:var(--gold) !important}
-.mbs-app header.masthead .subhead{color:#c3cfe0 !important}
+.mbs-app header.masthead .eyebrow{color:var(--gold) !important;margin:0 0 4px !important}
+.mbs-app header.masthead .subhead{color:#c3cfe0 !important;margin:6px 0 0 !important;position:static !important;display:block !important;clear:both !important}
 .mbs-app header.masthead .studio{color:#b9c6dc !important}
 .mbs-app header.masthead .cartbtn,.mbs-app header.masthead .cartbtn:hover{color:#fff !important}
 .mbs-app header.masthead .mh-card h4{color:var(--gold) !important}
