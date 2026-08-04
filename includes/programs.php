@@ -22,7 +22,7 @@ function mbs_programs() {
             'sports'        => array('Football'),    // 1 sport = field hidden; 2+ shows a Sport dropdown
             'divisionLabel' => 'Team / Division',
             'divisions'     => array('Varsity', 'JV', 'Freshman'),
-            'deadline'      => 'March 14, 2026',
+            'deadline'      => '',   // set e.g. 'March 14, 2026' to show a "Deadline to order:" line; leave '' to hide it
             'packages' => array(
                 'A' => array('name' => 'Package A', 'tag' => 'A', 'price' => 35, 'img' => 'samples/memorymate.jpg', 'inc' => '2 &times; 5&times;7 prints &middot; 8 wallets &middot; 8&times;10 Memory Mate'),
                 'B' => array('name' => 'Package B', 'tag' => 'B', 'price' => 45, 'img' => 'samples/memorymate.jpg', 'inc' => '4 &times; 5&times;7 prints &middot; 1 &times; 8&times;10 print &middot; 8 wallets &middot; 8&times;10 Memory Mate'),

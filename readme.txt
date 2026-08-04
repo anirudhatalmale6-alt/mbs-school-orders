@@ -47,4 +47,4 @@ Each item's "See sample" popup can show a real photo. Drop a JPG/PNG into
 in includes/programs.php. Leave 'img' off and the item shows a neutral placeholder.
 To swap a photo later, just replace the file in /assets/samples with the same name.
 
-Version 1.0.3
+Version 1.0.4
