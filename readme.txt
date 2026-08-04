@@ -54,4 +54,11 @@ button to "Request a Quote"). This plugin automatically neutralises that ONLY fo
 photo-order carts, so they show clean prices and a real "Proceed to Checkout"
 button. Rental carts are untouched. No theme edits required.
 
-Version 1.0.6
+== Dedicated checkout page ==
+This site's normal WooCommerce Checkout page was turned into a gear-rental quote
+form. Photo orders are paid by card, so on activation the plugin creates its own
+page "Sports Photo Checkout" (holding the [woocommerce_checkout] shortcode) and
+automatically sends photo-order carts there for real card payment. Rental carts
+still go to the quote form, untouched. You don't need to configure anything.
+
+Version 1.0.7

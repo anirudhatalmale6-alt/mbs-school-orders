@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.6
+ * Version:     1.0.7
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.6');
+define('MBS_SO_VER', '1.0.7');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -53,9 +53,41 @@ function mbs_get_container_id() {
     return $id;
 }
 
+/* -------------------------------------------------------------------------
+ *  Dedicated real-payment checkout page for photo orders.
+ *
+ *  This site's normal WooCommerce "Checkout" page was repurposed into a
+ *  gear-rental QUOTE form (a Contact Form 7 form, no payment). Photo orders are
+ *  paid by card, so they need a real checkout. We keep our own page that simply
+ *  holds the [woocommerce_checkout] shortcode, and route photo-order carts to it
+ *  (see the filters below). The rental quote page is left completely untouched.
+ * ---------------------------------------------------------------------- */
+function mbs_get_checkout_page_id() {
+    $pid = (int) get_option('mbs_checkout_page_id');
+    if ($pid && get_post_status($pid) === 'publish' && get_post_type($pid) === 'page') {
+        return $pid;
+    }
+    if (!function_exists('wp_insert_post')) return 0;
+    $pid = wp_insert_post(array(
+        'post_title'     => 'Sports Photo Checkout',
+        'post_name'      => 'sports-photo-checkout',
+        'post_content'   => '[woocommerce_checkout]',
+        'post_status'    => 'publish',
+        'post_type'      => 'page',
+        'comment_status' => 'closed',
+        'ping_status'    => 'closed',
+    ));
+    if ($pid && !is_wp_error($pid)) {
+        update_option('mbs_checkout_page_id', (int) $pid);
+        return (int) $pid;
+    }
+    return 0;
+}
+
 register_activation_hook(__FILE__, function () {
     if (class_exists('WooCommerce')) {
         mbs_get_container_id();
+        mbs_get_checkout_page_id();
     }
 });
 
@@ -340,6 +372,38 @@ function mbs_fix_update_cart_text($translated, $text, $domain) {
         return 'Update cart';
     }
     return $translated;
+}
+
+// 4) Send photo-order carts to our real-payment checkout page instead of the
+//    site's rental-quote "Checkout" page. Cart-based, so rental carts (and any
+//    non-cart context) still get the normal checkout URL untouched.
+add_filter('woocommerce_get_checkout_url', 'mbs_checkout_url', 20, 1);
+function mbs_checkout_url($url) {
+    if (mbs_cart_has_order()) {
+        $pid = mbs_get_checkout_page_id();
+        if ($pid) return get_permalink($pid);
+    }
+    return $url;
+}
+
+// 5) Point the order-received / thank-you page at our checkout page for photo
+//    orders (it hosts [woocommerce_checkout], which also renders the
+//    confirmation). Order-based, so it still works after the cart is emptied.
+add_filter('woocommerce_get_checkout_order_received_url', 'mbs_order_received_url', 20, 2);
+function mbs_order_received_url($url, $order) {
+    if (!$order || !is_a($order, 'WC_Order')) return $url;
+    $cid = mbs_get_container_id();
+    foreach ($order->get_items() as $item) {
+        if ((int) $item->get_product_id() === (int) $cid) {
+            $pid = mbs_get_checkout_page_id();
+            if ($pid) {
+                $u = wc_get_endpoint_url('order-received', $order->get_id(), get_permalink($pid));
+                return add_query_arg('key', $order->get_order_key(), $u);
+            }
+            break;
+        }
+    }
+    return $url;
 }
 
 /* -------------------------------------------------------------------------
