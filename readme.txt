@@ -47,4 +47,11 @@ Each item's "See sample" popup can show a real photo. Drop a JPG/PNG into
 in includes/programs.php. Leave 'img' off and the item shows a neutral placeholder.
 To swap a photo later, just replace the file in /assets/samples with the same name.
 
-Version 1.0.4
+== Note on the "/day" pricing and "Request a Quote" button ==
+This site still carries "quote mode" code in the Bridge child theme from its
+equipment-rental days (it adds "/day" to prices and relabels the cart's checkout
+button to "Request a Quote"). This plugin automatically neutralises that ONLY for
+photo-order carts, so they show clean prices and a real "Proceed to Checkout"
+button. Rental carts are untouched. No theme edits required.
+
+Version 1.0.5

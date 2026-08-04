@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.4
+ * Version:     1.0.5
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.4');
+define('MBS_SO_VER', '1.0.5');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -274,6 +274,62 @@ function mbs_cart_item_name($name, $cart_item, $cart_item_key) {
     if (empty($cart_item['mbs'])) return $name;
     $m = $cart_item['mbs'];
     return esc_html($m['athlete'] ? $m['athlete'] . ' — Photo Order' : 'Photo Order');
+}
+
+/* -------------------------------------------------------------------------
+ *  Compatibility with the site's leftover gear-rental "quote mode".
+ *
+ *  The Bridge child theme (from when this site was an equipment-rental store)
+ *  appends "/day" to every price and relabels the cart's checkout button to
+ *  "Request a Quote" (and "Update cart" to "Update Quote"). That's correct for
+ *  renting gear, but wrong for photo orders, which are paid online by card.
+ *
+ *  These filters quietly undo that behaviour ONLY when a photo order is in the
+ *  cart. Any normal rental cart is left exactly as-is, so the gear-rental quote
+ *  flow keeps working. Deactivating this plugin reverts everything.
+ * ---------------------------------------------------------------------- */
+
+// True if the current cart contains at least one MBS photo-order line.
+function mbs_cart_has_order() {
+    if (!function_exists('WC') || is_null(WC()->cart)) return false;
+    foreach (WC()->cart->get_cart() as $item) {
+        if (!empty($item['mbs'])) return true;
+    }
+    return false;
+}
+
+// 1) Strip the theme's "/day" suffix from our own cart lines (rental lines keep it).
+add_filter('woocommerce_cart_item_price', 'mbs_strip_day_suffix', 20, 3);
+function mbs_strip_day_suffix($price, $cart_item, $cart_item_key) {
+    if (!empty($cart_item['mbs'])) {
+        $price = preg_replace('#\s*/\s*day\s*$#i', '', $price);
+    }
+    return $price;
+}
+
+// 2) When a photo order is in the cart, swap the theme's relabelled
+//    "Request a Quote" button back to a real "Proceed to Checkout" button.
+//    The theme only overrode the button TEMPLATE (it left the standard
+//    WooCommerce hook registered), so we can cleanly replace it here.
+add_action('woocommerce_before_cart', 'mbs_maybe_fix_checkout_button');
+function mbs_maybe_fix_checkout_button() {
+    if (!mbs_cart_has_order()) return;
+    remove_action('woocommerce_proceed_to_checkout', 'woocommerce_button_proceed_to_checkout', 20);
+    add_action('woocommerce_proceed_to_checkout', 'mbs_render_checkout_button', 20);
+}
+function mbs_render_checkout_button() {
+    echo '<a href="' . esc_url(wc_get_checkout_url()) . '" class="checkout-button button alt wc-forward mbs-checkout-button">'
+       . esc_html__('Proceed to Checkout', 'woocommerce') . '</a>';
+}
+
+// 3) Undo the theme's "Update cart" -> "Update Quote" relabel on the cart page
+//    when a photo order is present (guarded so it only runs on that exact string).
+add_filter('gettext', 'mbs_fix_update_cart_text', 30, 3);
+function mbs_fix_update_cart_text($translated, $text, $domain) {
+    if ($translated === 'Update Quote' && mbs_cart_has_order()) {
+        return __('Update cart', 'woocommerce');
+    }
+    return $translated;
 }
 
 /* -------------------------------------------------------------------------
