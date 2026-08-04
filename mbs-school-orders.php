@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.11
+ * Version:     1.0.12
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.11');
+define('MBS_SO_VER', '1.0.12');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -140,27 +140,15 @@ function mbs_shortcode($atts) {
     );
 
     // Edit mode: ?mbs_edit=<cart_item_key> re-opens the form pre-filled with that
-    // athlete so a change replaces the cart line instead of adding a new one.
+    // athlete so a change replaces the cart line instead of adding a new one. (The
+    // front-end ALSO fetches this via AJAX from the URL key, so editing still works
+    // even when this page is served from cache — see mbs_ajax_edit_data.)
     if (!empty($_GET['mbs_edit']) && WC()->cart) {
         $ek   = sanitize_text_field(wp_unslash($_GET['mbs_edit']));
         $cart = WC()->cart->get_cart();
         if (isset($cart[$ek]) && !empty($cart[$ek]['mbs'])) {
-            $m = $cart[$ek]['mbs'];
-            // Fall back to splitting the combined name for lines added before v1.0.11.
-            $af = $m['athFirst'] ?? ''; $al = $m['athLast'] ?? '';
-            if ($af === '' && !empty($m['athlete'])) { $p = explode(' ', $m['athlete'], 2); $af = $p[0]; $al = $p[1] ?? ''; }
-            $pf = $m['parFirst'] ?? ''; $pl = $m['parLast'] ?? '';
-            if ($pf === '' && !empty($m['parent'])) { $p = explode(' ', $m['parent'], 2); $pf = $p[0]; $pl = $p[1] ?? ''; }
             $config['editKey'] = $ek;
-            $config['edit'] = array(
-                'athFirst' => $af, 'athLast' => $al,
-                'jersey'   => $m['jersey'] ?? '', 'team' => $m['team'] ?? '', 'sport' => $m['sport'] ?? '',
-                'parFirst' => $pf, 'parLast' => $pl,
-                'phone'    => $m['phone'] ?? '', 'email' => $m['email'] ?? '', 'notes' => $m['notes'] ?? '',
-                'buddy'    => $m['buddy'] ?? '',
-                'pkg'      => $m['pkg'] ?? 'NONE',
-                'addons'   => !empty($m['addons']) && is_array($m['addons']) ? $m['addons'] : (object) array(),
-            );
+            $config['edit']    = mbs_build_edit($cart[$ek]['mbs']);
         }
     }
 
@@ -188,6 +176,48 @@ add_filter('rocket_excluded_inline_js_content', function ($e) { $e[] = 'mbs-scho
 add_filter('sgo_js_minify_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
 add_filter('sgo_javascript_combine_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
 add_filter('sgo_js_async_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
+
+/* -------------------------------------------------------------------------
+ *  Build the "edit" payload (all fields needed to re-populate the form) from a
+ *  cart item's stored meta. Shared by the shortcode (page render) and the AJAX
+ *  fetch below. Falls back to splitting the combined name for lines saved before
+ *  the raw first/last fields existed.
+ * ---------------------------------------------------------------------- */
+function mbs_build_edit($m) {
+    $af = $m['athFirst'] ?? ''; $al = $m['athLast'] ?? '';
+    if ($af === '' && !empty($m['athlete'])) { $p = explode(' ', $m['athlete'], 2); $af = $p[0]; $al = $p[1] ?? ''; }
+    $pf = $m['parFirst'] ?? ''; $pl = $m['parLast'] ?? '';
+    if ($pf === '' && !empty($m['parent'])) { $p = explode(' ', $m['parent'], 2); $pf = $p[0]; $pl = $p[1] ?? ''; }
+    return array(
+        'athFirst' => $af, 'athLast' => $al,
+        'jersey'   => $m['jersey'] ?? '', 'team' => $m['team'] ?? '', 'sport' => $m['sport'] ?? '',
+        'parFirst' => $pf, 'parLast' => $pl,
+        'phone'    => $m['phone'] ?? '', 'email' => $m['email'] ?? '', 'notes' => $m['notes'] ?? '',
+        'buddy'    => $m['buddy'] ?? '',
+        'pkg'      => $m['pkg'] ?? 'NONE',
+        'addons'   => !empty($m['addons']) && is_array($m['addons']) ? $m['addons'] : (object) array(),
+    );
+}
+
+/* -------------------------------------------------------------------------
+ *  AJAX: return one cart line's saved details so the form can pre-fill for an
+ *  edit. Fetched live (never cached), so "Edit this athlete" works even when the
+ *  order-form page itself is served from WP Rocket / SiteGround cache.
+ * ---------------------------------------------------------------------- */
+add_action('wp_ajax_mbs_edit_data', 'mbs_ajax_edit_data');
+add_action('wp_ajax_nopriv_mbs_edit_data', 'mbs_ajax_edit_data');
+function mbs_ajax_edit_data() {
+    check_ajax_referer('mbs_add', 'nonce');
+    if (!function_exists('WC') || is_null(WC()->cart)) {
+        wp_send_json_error('Cart unavailable.');
+    }
+    $ek   = sanitize_text_field(wp_unslash($_POST['key'] ?? ''));
+    $cart = WC()->cart->get_cart();
+    if (!isset($cart[$ek]) || empty($cart[$ek]['mbs'])) {
+        wp_send_json_error('Item not found.');
+    }
+    wp_send_json_success(array('editKey' => $ek, 'edit' => mbs_build_edit($cart[$ek]['mbs'])));
+}
 
 /* -------------------------------------------------------------------------
  *  AJAX: add one athlete's order to the WooCommerce cart.
@@ -376,7 +406,7 @@ function mbs_cart_item_name($name, $cart_item, $cart_item_key) {
         $form_url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
         if ($form_url) {
             $edit = add_query_arg('mbs_edit', $cart_item_key, $form_url);
-            $label .= '<br><a href="' . esc_url($edit) . '" class="mbs-edit-link" style="font-size:13px;font-weight:600">&#9998; Edit this athlete</a>';
+            $label .= '<br><a href="' . esc_url($edit) . '" class="mbs-edit-link" style="display:inline-block;margin-top:7px;padding:6px 14px;border:1.5px solid #0b1f3a;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;color:#0b1f3a">&#9998; Edit this athlete</a>';
         }
     }
     return $label;
@@ -512,7 +542,19 @@ function mbs_back_to_form_link() {
     if (!mbs_cart_has_order()) return;
     $url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
     if (!$url) return;
-    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; Back to the order form (add another athlete or make a change)</a></p>';
+    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; Back to the order form (to add another athlete)</a></p>';
+}
+
+// 8) Lock our photo-order line to quantity 1. Each athlete is its own line and the
+//    price is that athlete's whole order, so a cart quantity of 2 would just double
+//    everything — which never makes sense here. Marking the product "sold
+//    individually" makes the cart show a fixed "1" instead of an editable stepper.
+add_filter('woocommerce_is_sold_individually', 'mbs_sold_individually', 10, 2);
+function mbs_sold_individually($val, $product) {
+    if (is_a($product, 'WC_Product') && (int) $product->get_id() === (int) mbs_get_container_id()) {
+        return true;
+    }
+    return $val;
 }
 
 /* -------------------------------------------------------------------------

@@ -284,11 +284,34 @@
     });
   }
 
+  /* ---------- decide: edit an existing line, or a fresh form ---------- */
+  function getUrlParam(name) {
+    try { return new URL(location.href).searchParams.get(name); } catch (e) { return null; }
+  }
+  // Pull an athlete's saved details live from the server (works even if this page
+  // was served from cache, which would otherwise carry no edit data).
+  function fetchEditData(key, done) {
+    var body = new URLSearchParams();
+    body.set('action', 'mbs_edit_data'); body.set('nonce', MBS.nonce); body.set('key', key);
+    fetch(MBS.ajax, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res && res.success && res.data) { EDIT = res.data.edit; editKey = res.data.editKey; applyEdit(); }
+        else { restoreForm(); }
+        done();
+      })
+      .catch(function () { restoreForm(); done(); });
+  }
+  function resolvePrefill() {
+    if (EDIT) { applyEdit(); renderPkg(); return; }                 // server injected (page not cached)
+    var urlKey = getUrlParam('mbs_edit');
+    if (urlKey) { fetchEditData(urlKey, function () { renderPkg(); }); return; }  // cache-proof
+    restoreForm(); renderPkg();                                     // normal fresh form
+  }
+
   /* ---------- init ---------- */
   initProgram();
   renderAddons();
-  if (EDIT) applyEdit();     // editing a cart line: fill everything from it
-  else restoreForm();        // otherwise bring back anything typed before navigating away
-  renderPkg();
   bind();
+  resolvePrefill();
 })();

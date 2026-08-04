@@ -86,4 +86,9 @@ order form pre-filled with that athlete (name, team, package, extras, contact,
 notes). Saving replaces that cart line instead of adding a duplicate, then returns
 to the cart.
 
-Version 1.0.11
+== Quantity locked + edit made cache-proof ==
+Each athlete line is now fixed at quantity 1 (changing it used to double the whole
+order). "Edit this athlete" now fetches the saved details live, so it works even
+when the page is cached. A small version number shows at the bottom of the form.
+
+Version 1.0.12

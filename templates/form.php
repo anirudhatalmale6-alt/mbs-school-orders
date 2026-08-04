@@ -85,7 +85,7 @@
 
         <div id="mbsAdded" style="display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">
           <div style="display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ok);font-size:16px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--ok)" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg><span id="mbsAddedMsg">Added to cart</span></div>
-          <p style="color:var(--muted);font-size:14px;margin:8px 0 14px">Order for another athlete (siblings, teammates) or head to checkout.</p>
+          <p style="color:var(--muted);font-size:14px;margin:8px 0 14px">You can review or change this order any time from your cart. Most families just head to checkout — only add another athlete if you have more than one.</p>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <a class="btn btn-primary" id="mbsCheckout" href="<?php echo esc_url(wc_get_cart_url()); ?>">Go to cart &amp; checkout →</a>
             <button class="btn btn-ghost" id="mbsAddAnother" type="button">＋ Add another athlete</button>
@@ -112,5 +112,7 @@
   <div class="lightbox" id="lightbox"><div class="lb-inner"><img id="lbImg" alt="Sample"><div class="lb-cap"><span id="lbCap">Sample</span><small>Product photo</small></div><button class="lb-x" id="lbClose" type="button">✕</button></div></div>
 
   <div class="toast" id="toast"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg><span id="toastMsg">Added to cart</span></div>
+
+  <div style="text-align:center;color:#9fb0c8;font-size:11px;margin-top:16px;letter-spacing:.02em">Order system v<?php echo esc_html(defined('MBS_SO_VER') ? MBS_SO_VER : ''); ?></div>
 
 </div>
