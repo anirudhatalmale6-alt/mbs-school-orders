@@ -145,6 +145,7 @@
     reqFields.forEach(function (id) { $(id).style.borderColor = ''; });
     miss.forEach(function (id) { $(id).style.borderColor = 'var(--scarlet)'; });
     if (miss.length) { $(miss[0]).focus(); toast('Please fill in athlete, parent, phone and email'); return; }
+    if (ph.replace(/\D/g, '').length !== 10) { $('fPhone').style.borderColor = 'var(--scarlet)'; $('fPhone').focus(); toast('Please enter a 10-digit phone number'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { $('fEmail').style.borderColor = 'var(--scarlet)'; $('fEmail').focus(); toast('Please enter a valid email address'); return; }
 
     var p = curPkg(), ad = selectedAddons();
@@ -171,6 +172,8 @@
     body.set('phone', $('fPhone').value.trim());
     body.set('email', $('fEmail').value.trim());
     body.set('buddy', buddyNames);
+    body.set('notes', $('fNotes') ? $('fNotes').value.trim() : '');
+    body.set('form_url', location.href);
 
     fetch(MBS.ajax, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
       .then(function (r) { return r.json(); })
@@ -185,6 +188,7 @@
         ADDONS.forEach(function (a) { qty[a.id] = 0; if ($('q_' + a.id)) $('q_' + a.id).textContent = '0'; if ($('ad_' + a.id)) $('ad_' + a.id).classList.remove('on'); });
         buddyNames = ''; if ($('fBuddy')) { $('fBuddy').value = ''; if ($('buddyWrap')) $('buddyWrap').style.display = 'none'; }
         $('fAthFirst').value = ''; $('fAthLast').value = ''; $('fJersey').value = '';
+        if ($('fNotes')) $('fNotes').value = '';
         $('fPkg').selectedIndex = 0; renderPkg();
       })
       .catch(function () { btn.disabled = false; btn.innerHTML = orig; toast('Network error — please try again'); });

@@ -66,4 +66,11 @@ The parent name, phone and email entered on the order form are (a) saved onto th
 order line in WooCommerce > Orders, and (b) pre-filled into the checkout billing
 fields so parents never type them twice.
 
-Version 1.0.8
+== Phone check, Notes, and a Back link ==
+- Phone must be a valid 10-digit number (checked in the browser and on the server).
+- Optional "Notes / special requests" field on the order form; it shows in the cart
+  and is saved on the order in WooCommerce > Orders.
+- A "Back to the order form" link appears on the cart and checkout so parents can
+  return to add another athlete or fix a detail.
+
+Version 1.0.9

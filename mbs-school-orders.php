@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.8
+ * Version:     1.0.9
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.8');
+define('MBS_SO_VER', '1.0.9');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -228,13 +228,22 @@ function mbs_ajax_add() {
     }
     $phone = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
     $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
-    if ($phone === '') {
-        wp_send_json_error('A phone number is required.');
+    if (strlen(preg_replace('/\D/', '', $phone)) !== 10) {
+        wp_send_json_error('Please enter a 10-digit phone number.');
     }
     if ($email === '' || !is_email($email)) {
         wp_send_json_error('A valid email address is required.');
     }
     $buddy = sanitize_text_field(wp_unslash($_POST['buddy'] ?? ''));
+    $notes = sanitize_textarea_field(wp_unslash($_POST['notes'] ?? ''));
+    if (function_exists('mb_substr')) { $notes = mb_substr($notes, 0, 500); }
+
+    // Remember which order-form page this came from, so the cart/checkout can
+    // offer a "back to the order form" link.
+    $form_url = esc_url_raw(wp_unslash($_POST['form_url'] ?? ''));
+    if ($form_url && function_exists('WC') && WC()->session) {
+        WC()->session->set('mbs_form_url', $form_url);
+    }
     if ($has_buddy && $buddy === '') {
         wp_send_json_error('Please enter the buddy name(s).');
     }
@@ -250,6 +259,7 @@ function mbs_ajax_add() {
         'phone'   => $phone,
         'email'   => $email,
         'buddy'   => $buddy,
+        'notes'   => $notes,
         'lines'   => array_map('sanitize_text_field', $lines),
     );
 
@@ -303,6 +313,7 @@ function mbs_item_data($data, $cart_item) {
         $data[] = array('name' => 'Order', 'value' => wp_kses_post(implode('<br>', array_map('esc_html', $m['lines']))));
     }
     if (!empty($m['buddy'])) $data[] = array('name' => 'Buddies', 'value' => esc_html($m['buddy']));
+    if (!empty($m['notes'])) $data[] = array('name' => 'Notes', 'value' => esc_html($m['notes']));
     return $data;
 }
 
@@ -437,6 +448,18 @@ function mbs_prefill_checkout($value, $input) {
     return $value;
 }
 
+// 7) Offer a "back to the order form" link on the cart & checkout, so a parent
+//    can return to fix a detail or add another athlete. Uses the order-form URL
+//    saved when they added to cart.
+add_action('woocommerce_before_cart', 'mbs_back_to_form_link', 5);
+add_action('woocommerce_before_checkout_form', 'mbs_back_to_form_link', 5);
+function mbs_back_to_form_link() {
+    if (!mbs_cart_has_order()) return;
+    $url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
+    if (!$url) return;
+    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; Back to the order form (add another athlete or make a change)</a></p>';
+}
+
 /* -------------------------------------------------------------------------
  *  Persist all details onto the order line item (so the photographer
  *  sees everything in WooCommerce > Orders)
@@ -454,4 +477,5 @@ function mbs_order_line_item($item, $cart_item_key, $values, $order) {
     if ($m['email'])    $item->add_meta_data('Email', $m['email'], true);
     if (!empty($m['lines'])) $item->add_meta_data('Order details', implode('  |  ', $m['lines']), true);
     if ($m['buddy'])    $item->add_meta_data('Buddies', $m['buddy'], true);
+    if (!empty($m['notes'])) $item->add_meta_data('Notes', $m['notes'], true);
 }
