@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.12
+ * Version:     1.0.13
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.12');
+define('MBS_SO_VER', '1.0.13');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -455,7 +455,7 @@ function mbs_maybe_fix_checkout_button() {
 }
 function mbs_render_checkout_button() {
     echo '<a href="' . esc_url(wc_get_checkout_url()) . '" class="checkout-button button alt wc-forward mbs-checkout-button">'
-       . esc_html__('Proceed to Checkout', 'woocommerce') . '</a>';
+       . 'Continue to Payment &rarr;</a>';
 }
 
 // 3) Undo the theme's "Update cart" -> "Update Quote" relabel on the cart page
@@ -542,7 +542,7 @@ function mbs_back_to_form_link() {
     if (!mbs_cart_has_order()) return;
     $url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
     if (!$url) return;
-    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; Back to the order form (to add another athlete)</a></p>';
+    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; CLICK HERE to add another athlete</a></p>';
 }
 
 // 8) Lock our photo-order line to quantity 1. Each athlete is its own line and the

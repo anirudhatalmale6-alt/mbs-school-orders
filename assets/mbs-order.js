@@ -48,6 +48,7 @@
     $('mascotLine').textContent = P.mascot || '';
     $('progTitle').innerHTML = (P.line1 || '') + '<br>' + (P.line2 || '') + ' <span class="yr">' + (P.year || '') + '</span>';
     if (P.deadline) $('progSub').innerHTML = 'Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely. Deadline to order: <b>' + P.deadline + '</b>.';
+    if (P.productsUrl) { $('progProductsLink').href = P.productsUrl; $('progProducts').style.display = 'block'; }
 
     // divisions
     $('divLabel').innerHTML = (P.divisionLabel || 'Team / Division') + ' <span class="req">*</span>';

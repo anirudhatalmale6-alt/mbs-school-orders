@@ -91,4 +91,12 @@ Each athlete line is now fixed at quantity 1 (changing it used to double the who
 order). "Edit this athlete" now fetches the saved details live, so it works even
 when the page is cached. A small version number shows at the bottom of the form.
 
-Version 1.0.12
+== Products link + clearer labels (1.0.13) ==
+- Optional "See photos & descriptions of every product" link at the top of the
+  form. Set 'productsUrl' on the program in includes/programs.php (already set to
+  www.marknicholasphotography.com/products for Redondo); leave '' to hide it.
+- The cart's "back" link now reads "CLICK HERE to add another athlete".
+- The cart's checkout button now reads "Continue to Payment" so it's clear the
+  final card entry is the next step (standard two-step: cart -> payment).
+
+Version 1.0.13

@@ -20,6 +20,7 @@
             <div class="eyebrow" id="mascotLine">Athletics</div>
             <h1 class="title" id="progTitle">Program</h1>
             <p class="subhead" id="progSub">Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely.</p>
+            <p class="prodlink" id="progProducts" style="display:none;margin:8px 0 0;font-size:15px">&#128247; <a id="progProductsLink" href="#" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-weight:600">See photos &amp; descriptions of every product &rarr;</a></p>
           </div>
         </div>
         <div class="mh-card">
