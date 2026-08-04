@@ -136,12 +136,16 @@
   function addToCart() {
     var af = $('fAthFirst').value.trim(), al = $('fAthLast').value.trim();
     var pf = $('fParFirst').value.trim(), pl = $('fParLast').value.trim();
+    var ph = $('fPhone').value.trim(), em = $('fEmail').value.trim();
+    var reqFields = ['fAthFirst', 'fAthLast', 'fParFirst', 'fParLast', 'fPhone', 'fEmail'];
     var miss = [];
     if (!af) miss.push('fAthFirst'); if (!al) miss.push('fAthLast');
     if (!pf) miss.push('fParFirst'); if (!pl) miss.push('fParLast');
+    if (!ph) miss.push('fPhone'); if (!em) miss.push('fEmail');
+    reqFields.forEach(function (id) { $(id).style.borderColor = ''; });
     miss.forEach(function (id) { $(id).style.borderColor = 'var(--scarlet)'; });
-    if (miss.length) { $(miss[0]).focus(); toast('Please fill in the athlete and parent names'); return; }
-    ['fAthFirst', 'fAthLast', 'fParFirst', 'fParLast'].forEach(function (id) { $(id).style.borderColor = ''; });
+    if (miss.length) { $(miss[0]).focus(); toast('Please fill in athlete, parent, phone and email'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { $('fEmail').style.borderColor = 'var(--scarlet)'; $('fEmail').focus(); toast('Please enter a valid email address'); return; }
 
     var p = curPkg(), ad = selectedAddons();
     if (!p.price && !ad.length) { toast('Pick a package or add at least one item'); return; }

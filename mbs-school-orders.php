@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.5
+ * Version:     1.0.6
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.5');
+define('MBS_SO_VER', '1.0.6');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -194,6 +194,14 @@ function mbs_ajax_add() {
     if ($athlete === '' || $parent === '') {
         wp_send_json_error('Athlete and parent names are required.');
     }
+    $phone = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
+    $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
+    if ($phone === '') {
+        wp_send_json_error('A phone number is required.');
+    }
+    if ($email === '' || !is_email($email)) {
+        wp_send_json_error('A valid email address is required.');
+    }
     $buddy = sanitize_text_field(wp_unslash($_POST['buddy'] ?? ''));
     if ($has_buddy && $buddy === '') {
         wp_send_json_error('Please enter the buddy name(s).');
@@ -207,8 +215,8 @@ function mbs_ajax_add() {
         'jersey'  => sanitize_text_field(wp_unslash($_POST['jersey'] ?? '')),
         'team'    => sanitize_text_field(wp_unslash($_POST['team'] ?? '')),
         'sport'   => sanitize_text_field(wp_unslash($_POST['sport'] ?? '')),
-        'phone'   => sanitize_text_field(wp_unslash($_POST['phone'] ?? '')),
-        'email'   => sanitize_email(wp_unslash($_POST['email'] ?? '')),
+        'phone'   => $phone,
+        'email'   => $email,
         'buddy'   => $buddy,
         'lines'   => array_map('sanitize_text_field', $lines),
     );
@@ -324,10 +332,12 @@ function mbs_render_checkout_button() {
 
 // 3) Undo the theme's "Update cart" -> "Update Quote" relabel on the cart page
 //    when a photo order is present (guarded so it only runs on that exact string).
+//    NOTE: return a plain literal, NOT __()/translate() — calling a translation
+//    function inside a 'gettext' filter re-enters this same filter and recurses.
 add_filter('gettext', 'mbs_fix_update_cart_text', 30, 3);
 function mbs_fix_update_cart_text($translated, $text, $domain) {
     if ($translated === 'Update Quote' && mbs_cart_has_order()) {
-        return __('Update cart', 'woocommerce');
+        return 'Update cart';
     }
     return $translated;
 }

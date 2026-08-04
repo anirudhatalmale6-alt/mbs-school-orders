@@ -55,8 +55,8 @@
               <label class="fld"><span class="lab">Parent Last Name <span class="req">*</span></span><input class="inp" id="fParLast" placeholder="Reyes"></label>
             </div>
             <div class="grid2">
-              <label class="fld"><span class="lab">Phone</span><input class="inp" id="fPhone" placeholder="(310) 555-1234"></label>
-              <label class="fld"><span class="lab">Email (for receipt)</span><input class="inp" id="fEmail" placeholder="parent@email.com"></label>
+              <label class="fld"><span class="lab">Phone <span class="req">*</span></span><input class="inp" id="fPhone" type="tel" inputmode="tel" placeholder="(310) 555-1234"></label>
+              <label class="fld"><span class="lab">Email (for receipt) <span class="req">*</span></span><input class="inp" id="fEmail" type="email" inputmode="email" placeholder="parent@email.com"></label>
             </div>
           </div>
         </div>

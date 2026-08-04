@@ -54,4 +54,4 @@ button to "Request a Quote"). This plugin automatically neutralises that ONLY fo
 photo-order carts, so they show clean prices and a real "Proceed to Checkout"
 button. Rental carts are untouched. No theme edits required.
 
-Version 1.0.5
+Version 1.0.6
