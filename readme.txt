@@ -110,4 +110,20 @@ when the page is cached. A small version number shows at the bottom of the form.
   looked broken in the cart and on the payment page. Imported into your media
   library automatically; no action needed.
 
-Version 1.0.14
+== Redondo hawk thumbnail + versioned default (1.0.15) ==
+- The default order thumbnail is now the Redondo Union hawk logo. If your product
+  is still using the plugin's auto default, updating swaps it in automatically.
+- If you set your OWN product image (Products > "Sports Photo Order" > Product
+  image), the plugin never overrides it. To change the shared default later, bump
+  MBS_THUMB_VER and replace assets/order-thumb.png.
+
+== How to add products / change pricing ==
+Everything a school sells lives in includes/programs.php.
+- Change a package price: find the 'packages' block, edit the 'price' number.
+- Change an add-on price: find the 'addons' block, edit that item's 'p' number.
+- Add a new add-on: copy an existing addon line, give it a new 'id', set its label
+  't' and price 'p'. Save. It appears on the form automatically.
+Edit the file via your host's File Manager (SiteGround: Site Tools > File Manager >
+wp-content/plugins/mbs-school-orders/includes/programs.php) or FTP.
+
+Version 1.0.15

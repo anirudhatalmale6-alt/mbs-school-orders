@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.14
+ * Version:     1.0.15
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,9 +10,12 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.14');
+define('MBS_SO_VER', '1.0.15');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
+// Bump when assets/order-thumb.png changes, so installs that are still using OUR
+// auto default get the new one. A thumbnail the client set themselves is untouched.
+define('MBS_THUMB_VER', '2');
 
 require_once MBS_SO_DIR . 'includes/programs.php';
 
@@ -59,44 +62,65 @@ function mbs_get_container_id() {
  * Give the hidden container product a clean branded thumbnail so it never shows
  * WooCommerce's grey "placeholder" image (which looked broken in the cart and in
  * the Square/WooPay order summary). Imports assets/order-thumb.png into the media
- * library once and sets it as the product's featured image.
+ * library and sets it as the product's featured image.
+ *
+ * Rules:
+ *  - No image yet            -> import our default and set it.
+ *  - Our default, but we've  -> re-import the new default (MBS_THUMB_VER bumped)
+ *    shipped a new one          and replace it.
+ *  - The client set their own -> never touch it.
  */
 function mbs_ensure_container_image($product_id) {
     if (!$product_id) return;
-    if (get_post_thumbnail_id($product_id)) return; // already set
-    $src = MBS_SO_DIR . 'assets/order-thumb.png';
-    if (!file_exists($src)) return;
 
-    // Reuse a previously-imported attachment if we have one.
-    $att_id = (int) get_option('mbs_order_thumb_id');
-    if ($att_id && get_post_status($att_id)) {
-        set_post_thumbnail($product_id, $att_id);
-        return;
+    $current   = (int) get_post_thumbnail_id($product_id);
+    $ours      = (int) get_option('mbs_order_thumb_id');
+    $ours_ver  = (string) get_option('mbs_order_thumb_ver');
+
+    // The client picked their own image — leave it completely alone.
+    if ($current && $current !== $ours) return;
+
+    // Already showing OUR current default — nothing to do.
+    if ($current && $current === $ours && $ours_ver === MBS_THUMB_VER) return;
+
+    $att_id = mbs_import_thumb($product_id);
+    if (!$att_id) return;
+
+    set_post_thumbnail($product_id, $att_id);
+    update_option('mbs_order_thumb_id', (int) $att_id);
+    update_option('mbs_order_thumb_ver', MBS_THUMB_VER);
+
+    // Tidy up the previous auto-thumbnail we're replacing (never the client's).
+    if ($ours && $ours !== $att_id) {
+        wp_delete_attachment($ours, true);
     }
+}
 
-    if (!function_exists('wp_upload_dir')) return;
+/** Import assets/order-thumb.png into the media library; returns the attachment id. */
+function mbs_import_thumb($product_id) {
+    $src = MBS_SO_DIR . 'assets/order-thumb.png';
+    if (!file_exists($src) || !function_exists('wp_upload_dir')) return 0;
+
     $upload = wp_upload_dir();
-    if (!empty($upload['error'])) return;
+    if (!empty($upload['error'])) return 0;
     $filename = wp_unique_filename($upload['path'], 'mbs-photo-order.png');
     $dest = trailingslashit($upload['path']) . $filename;
-    if (!@copy($src, $dest)) return;
+    if (!@copy($src, $dest)) return 0;
 
-    $attachment = array(
+    $att_id = wp_insert_attachment(array(
         'post_mime_type' => 'image/png',
         'post_title'     => 'Sports Photo Order',
         'post_content'   => '',
         'post_status'    => 'inherit',
-    );
-    $att_id = wp_insert_attachment($attachment, $dest, $product_id);
-    if (is_wp_error($att_id) || !$att_id) return;
+    ), $dest, $product_id);
+    if (is_wp_error($att_id) || !$att_id) return 0;
 
     if (file_exists(ABSPATH . 'wp-admin/includes/image.php')) {
         require_once ABSPATH . 'wp-admin/includes/image.php';
         $meta = wp_generate_attachment_metadata($att_id, $dest);
         wp_update_attachment_metadata($att_id, $meta);
     }
-    update_option('mbs_order_thumb_id', (int) $att_id);
-    set_post_thumbnail($product_id, $att_id);
+    return (int) $att_id;
 }
 
 /* -------------------------------------------------------------------------
