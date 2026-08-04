@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.10
+ * Version:     1.0.11
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.10');
+define('MBS_SO_VER', '1.0.11');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -139,6 +139,31 @@ function mbs_shortcode($atts) {
         'program'    => $prog_js,
     );
 
+    // Edit mode: ?mbs_edit=<cart_item_key> re-opens the form pre-filled with that
+    // athlete so a change replaces the cart line instead of adding a new one.
+    if (!empty($_GET['mbs_edit']) && WC()->cart) {
+        $ek   = sanitize_text_field(wp_unslash($_GET['mbs_edit']));
+        $cart = WC()->cart->get_cart();
+        if (isset($cart[$ek]) && !empty($cart[$ek]['mbs'])) {
+            $m = $cart[$ek]['mbs'];
+            // Fall back to splitting the combined name for lines added before v1.0.11.
+            $af = $m['athFirst'] ?? ''; $al = $m['athLast'] ?? '';
+            if ($af === '' && !empty($m['athlete'])) { $p = explode(' ', $m['athlete'], 2); $af = $p[0]; $al = $p[1] ?? ''; }
+            $pf = $m['parFirst'] ?? ''; $pl = $m['parLast'] ?? '';
+            if ($pf === '' && !empty($m['parent'])) { $p = explode(' ', $m['parent'], 2); $pf = $p[0]; $pl = $p[1] ?? ''; }
+            $config['editKey'] = $ek;
+            $config['edit'] = array(
+                'athFirst' => $af, 'athLast' => $al,
+                'jersey'   => $m['jersey'] ?? '', 'team' => $m['team'] ?? '', 'sport' => $m['sport'] ?? '',
+                'parFirst' => $pf, 'parLast' => $pl,
+                'phone'    => $m['phone'] ?? '', 'email' => $m['email'] ?? '', 'notes' => $m['notes'] ?? '',
+                'buddy'    => $m['buddy'] ?? '',
+                'pkg'      => $m['pkg'] ?? 'NONE',
+                'addons'   => !empty($m['addons']) && is_array($m['addons']) ? $m['addons'] : (object) array(),
+            );
+        }
+    }
+
     ob_start();
     include MBS_SO_DIR . 'templates/form.php';
     $html = ob_get_clean();
@@ -204,6 +229,7 @@ function mbs_ajax_add() {
         $addon_map[$a['id']] = $a;
     }
     $has_buddy = false;
+    $addon_qty = array();   // raw id => qty, kept so an order can be edited later
     foreach ($addons_in as $id => $q) {
         $id = sanitize_key($id);
         $q  = max(0, min(20, intval($q)));
@@ -212,6 +238,7 @@ function mbs_ajax_add() {
             $line = floatval($a['p']) * $q;
             $total += $line;
             $lines[] = $a['t'] . ($q > 1 ? ' × ' . $q : '') . ' — $' . number_format($line, 2);
+            $addon_qty[$id] = $q;
             if (!empty($a['buddy'])) $has_buddy = true;
         }
     }
@@ -249,23 +276,41 @@ function mbs_ajax_add() {
     }
 
     $meta = array(
-        'total'   => round($total, 2),
-        'program' => $prog['name'],
-        'athlete' => $athlete,
-        'parent'  => $parent,
-        'jersey'  => sanitize_text_field(wp_unslash($_POST['jersey'] ?? '')),
-        'team'    => sanitize_text_field(wp_unslash($_POST['team'] ?? '')),
-        'sport'   => sanitize_text_field(wp_unslash($_POST['sport'] ?? '')),
-        'phone'   => $phone,
-        'email'   => $email,
-        'buddy'   => $buddy,
-        'notes'   => $notes,
-        'lines'   => array_map('sanitize_text_field', $lines),
+        'total'    => round($total, 2),
+        'program'  => $prog['name'],
+        'athlete'  => $athlete,
+        'parent'   => $parent,
+        'athFirst' => sanitize_text_field(wp_unslash($_POST['athFirst'] ?? '')),
+        'athLast'  => sanitize_text_field(wp_unslash($_POST['athLast'] ?? '')),
+        'parFirst' => sanitize_text_field(wp_unslash($_POST['parFirst'] ?? '')),
+        'parLast'  => sanitize_text_field(wp_unslash($_POST['parLast'] ?? '')),
+        'jersey'   => sanitize_text_field(wp_unslash($_POST['jersey'] ?? '')),
+        'team'     => sanitize_text_field(wp_unslash($_POST['team'] ?? '')),
+        'sport'    => sanitize_text_field(wp_unslash($_POST['sport'] ?? '')),
+        'phone'    => $phone,
+        'email'    => $email,
+        'buddy'    => $buddy,
+        'notes'    => $notes,
+        'pkg'      => $pkgKey,      // raw selection, for editing later
+        'addons'   => $addon_qty,   // raw id => qty, for editing later
+        'lines'    => array_map('sanitize_text_field', $lines),
     );
 
     $pid = mbs_get_container_id();
     if (!$pid) {
         wp_send_json_error('Order product not set up. Re-activate the plugin.');
+    }
+
+    // If this is an edit of an existing cart line, drop the old one first so we
+    // replace it instead of adding a duplicate.
+    $edit_key = sanitize_text_field(wp_unslash($_POST['edit_key'] ?? ''));
+    $is_edit  = false;
+    if ($edit_key) {
+        $cart = WC()->cart->get_cart();
+        if (isset($cart[$edit_key]) && !empty($cart[$edit_key]['mbs'])) {
+            WC()->cart->remove_cart_item($edit_key);
+            $is_edit = true;
+        }
     }
 
     // Unique key so each athlete stays its own cart line (never merged).
@@ -282,6 +327,7 @@ function mbs_ajax_add() {
         'count'   => WC()->cart->get_cart_contents_count(),
         'cartUrl' => wc_get_cart_url(),
         'total'   => wc_price($meta['total']),
+        'edit'    => $is_edit,
     ));
 }
 
@@ -324,7 +370,16 @@ add_filter('woocommerce_cart_item_name', 'mbs_cart_item_name', 10, 3);
 function mbs_cart_item_name($name, $cart_item, $cart_item_key) {
     if (empty($cart_item['mbs'])) return $name;
     $m = $cart_item['mbs'];
-    return esc_html($m['athlete'] ? $m['athlete'] . ' — Photo Order' : 'Photo Order');
+    $label = esc_html($m['athlete'] ? $m['athlete'] . ' — Photo Order' : 'Photo Order');
+    // On the cart page, offer an "Edit this athlete" link back to the order form.
+    if (function_exists('is_cart') && is_cart()) {
+        $form_url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
+        if ($form_url) {
+            $edit = add_query_arg('mbs_edit', $cart_item_key, $form_url);
+            $label .= '<br><a href="' . esc_url($edit) . '" class="mbs-edit-link" style="font-size:13px;font-weight:600">&#9998; Edit this athlete</a>';
+        }
+    }
+    return $label;
 }
 
 /* -------------------------------------------------------------------------

@@ -80,4 +80,10 @@ the page - the form is still filled in, so nothing has to be re-entered. After a
 athlete is added to the cart, the athlete-specific fields clear for the next one
 while the contact details stay.
 
-Version 1.0.10
+== Editing an athlete already in the cart ==
+On the cart, each athlete line has an "Edit this athlete" link. It re-opens the
+order form pre-filled with that athlete (name, team, package, extras, contact,
+notes). Saving replaces that cart line instead of adding a duplicate, then returns
+to the cart.
+
+Version 1.0.11

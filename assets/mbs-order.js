@@ -13,6 +13,15 @@
   ADDONS.forEach(function (a) { qty[a.id] = 0; });
   var buddyNames = '';
 
+  // Edit mode: the server passes an athlete's saved data when the form is opened
+  // via the cart's "Edit this athlete" link (?mbs_edit=<key>).
+  var EDIT = MBS.edit || null;
+  var editKey = MBS.editKey || '';
+  function setSelect(id, val) {
+    var el = $(id); if (!el || val == null || val === '') return;
+    for (var i = 0; i < el.options.length; i++) { if (el.options[i].value === val || el.options[i].text === val) { el.value = val; return; } }
+  }
+
   var CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
 
   function sampleImg(label) {
@@ -174,6 +183,9 @@
     body.set('buddy', buddyNames);
     body.set('notes', $('fNotes') ? $('fNotes').value.trim() : '');
     body.set('form_url', location.href);
+    body.set('athFirst', af); body.set('athLast', al);
+    body.set('parFirst', pf); body.set('parLast', pl);
+    body.set('edit_key', editKey);
 
     fetch(MBS.ajax, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString() })
       .then(function (r) { return r.json(); })
@@ -181,16 +193,18 @@
         btn.disabled = false; btn.innerHTML = orig;
         if (!res || !res.success) { toast((res && res.data) ? res.data : 'Could not add to cart'); return; }
         if (res.data.count != null) $('cartCount').textContent = res.data.count;
-        toast('Added to cart ✓');
-        $('mbsAddedMsg').textContent = af + ' ' + al + ' added to cart';
-        $('mbsAdded').style.display = 'block';
-        // reset item selections; keep it ready for the next athlete
+        // reset item selections; keep contact ready for the next athlete
         ADDONS.forEach(function (a) { qty[a.id] = 0; if ($('q_' + a.id)) $('q_' + a.id).textContent = '0'; if ($('ad_' + a.id)) $('ad_' + a.id).classList.remove('on'); });
         buddyNames = ''; if ($('fBuddy')) { $('fBuddy').value = ''; if ($('buddyWrap')) $('buddyWrap').style.display = 'none'; }
         $('fAthFirst').value = ''; $('fAthLast').value = ''; $('fJersey').value = '';
         if ($('fNotes')) $('fNotes').value = '';
         $('fPkg').selectedIndex = 0; renderPkg();
         saveForm();  // persist the kept contact info + cleared athlete fields for the next athlete
+        // If we were editing an existing cart line, go straight back to the cart.
+        if (editKey) { window.location.href = (res.data && res.data.cartUrl) || MBS.cartUrl || $('mbsCartBtn').href; return; }
+        toast('Added to cart ✓');
+        $('mbsAddedMsg').textContent = af + ' ' + al + ' added to cart';
+        $('mbsAdded').style.display = 'block';
       })
       .catch(function () { btn.disabled = false; btn.innerHTML = orig; toast('Network error — please try again'); });
   }
@@ -222,6 +236,34 @@
     } catch (e) {}
   }
 
+  // Pre-fill the whole form from an existing cart line (edit mode).
+  function applyEdit() {
+    if (!EDIT) return;
+    var f = EDIT;
+    if (f.athFirst != null) $('fAthFirst').value = f.athFirst;
+    if (f.athLast != null) $('fAthLast').value = f.athLast;
+    if (f.jersey != null) $('fJersey').value = f.jersey;
+    if (f.parFirst != null) $('fParFirst').value = f.parFirst;
+    if (f.parLast != null) $('fParLast').value = f.parLast;
+    if (f.phone != null) $('fPhone').value = f.phone;
+    if (f.email != null) $('fEmail').value = f.email;
+    if ($('fNotes') && f.notes != null) $('fNotes').value = f.notes;
+    setSelect('fDivision', f.team);
+    setSelect('fSport', f.sport);
+    setSelect('fPkg', f.pkg);
+    var am = f.addons || {};
+    Object.keys(am).forEach(function (id) {
+      var q = parseInt(am[id], 10) || 0;
+      if (qty[id] != null) {
+        qty[id] = q;
+        if ($('q_' + id)) $('q_' + id).textContent = q;
+        if ($('ad_' + id)) $('ad_' + id).classList.toggle('on', q > 0);
+      }
+    });
+    if (qty['buddy'] > 0 && $('buddyWrap')) { $('buddyWrap').style.display = 'block'; if (f.buddy != null && $('fBuddy')) $('fBuddy').value = f.buddy; }
+    $('mbsAddBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Update This Athlete · <span id="addPrice">' + money(orderTotal()) + '</span>';
+  }
+
   /* ---------- wire events ---------- */
   function bind() {
     $('fPkg').addEventListener('change', renderPkg);
@@ -244,8 +286,9 @@
 
   /* ---------- init ---------- */
   initProgram();
-  restoreForm();   // bring back anything the parent typed before navigating away
   renderAddons();
+  if (EDIT) applyEdit();     // editing a cart line: fill everything from it
+  else restoreForm();        // otherwise bring back anything typed before navigating away
   renderPkg();
   bind();
 })();
