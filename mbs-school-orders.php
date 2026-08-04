@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.13
+ * Version:     1.0.14
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.13');
+define('MBS_SO_VER', '1.0.14');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -34,6 +34,7 @@ add_action('admin_init', function () {
 function mbs_get_container_id() {
     $pid = (int) get_option('mbs_container_product_id');
     if ($pid && get_post_status($pid) === 'publish' && get_post_type($pid) === 'product') {
+        mbs_ensure_container_image($pid); // no-op if it already has a thumbnail
         return $pid;
     }
     if (!function_exists('wc_get_product') || !class_exists('WC_Product_Simple')) {
@@ -50,7 +51,52 @@ function mbs_get_container_id() {
     $p->set_virtual(true);  // photos are delivered via the school, so no shipping step at checkout
     $id = $p->save();
     update_option('mbs_container_product_id', $id);
+    mbs_ensure_container_image($id);
     return $id;
+}
+
+/**
+ * Give the hidden container product a clean branded thumbnail so it never shows
+ * WooCommerce's grey "placeholder" image (which looked broken in the cart and in
+ * the Square/WooPay order summary). Imports assets/order-thumb.png into the media
+ * library once and sets it as the product's featured image.
+ */
+function mbs_ensure_container_image($product_id) {
+    if (!$product_id) return;
+    if (get_post_thumbnail_id($product_id)) return; // already set
+    $src = MBS_SO_DIR . 'assets/order-thumb.png';
+    if (!file_exists($src)) return;
+
+    // Reuse a previously-imported attachment if we have one.
+    $att_id = (int) get_option('mbs_order_thumb_id');
+    if ($att_id && get_post_status($att_id)) {
+        set_post_thumbnail($product_id, $att_id);
+        return;
+    }
+
+    if (!function_exists('wp_upload_dir')) return;
+    $upload = wp_upload_dir();
+    if (!empty($upload['error'])) return;
+    $filename = wp_unique_filename($upload['path'], 'mbs-photo-order.png');
+    $dest = trailingslashit($upload['path']) . $filename;
+    if (!@copy($src, $dest)) return;
+
+    $attachment = array(
+        'post_mime_type' => 'image/png',
+        'post_title'     => 'Sports Photo Order',
+        'post_content'   => '',
+        'post_status'    => 'inherit',
+    );
+    $att_id = wp_insert_attachment($attachment, $dest, $product_id);
+    if (is_wp_error($att_id) || !$att_id) return;
+
+    if (file_exists(ABSPATH . 'wp-admin/includes/image.php')) {
+        require_once ABSPATH . 'wp-admin/includes/image.php';
+        $meta = wp_generate_attachment_metadata($att_id, $dest);
+        wp_update_attachment_metadata($att_id, $meta);
+    }
+    update_option('mbs_order_thumb_id', (int) $att_id);
+    set_post_thumbnail($product_id, $att_id);
 }
 
 /* -------------------------------------------------------------------------
@@ -383,10 +429,18 @@ function mbs_item_data($data, $cart_item) {
     if (empty($cart_item['mbs'])) return $data;
     $m = $cart_item['mbs'];
     $team = trim(($m['sport'] ? $m['sport'] . ' · ' : '') . $m['team']);
-    $data[] = array('name' => 'Athlete', 'value' => esc_html($m['athlete'] . ($m['jersey'] ? ' · #' . $m['jersey'] : '')));
+    $data[] = array('name' => 'Athlete', 'value' => '<strong>' . esc_html($m['athlete'] . ($m['jersey'] ? ' · #' . $m['jersey'] : '')) . '</strong>');
     if ($team) $data[] = array('name' => 'Team', 'value' => esc_html($team));
+    // One row per ordered item. We used to join these with <br>, but Square/WooPay's
+    // order summary renders meta as PLAIN TEXT, so the <br> showed up literally. A
+    // separate labelled row per line reads cleanly in the cart, the checkout AND
+    // WooPay. The first line is the package (when one was chosen); the rest are extras.
     if (!empty($m['lines'])) {
-        $data[] = array('name' => 'Order', 'value' => wp_kses_post(implode('<br>', array_map('esc_html', $m['lines']))));
+        $has_pkg = !empty($m['pkg']) && $m['pkg'] !== 'NONE';
+        foreach ($m['lines'] as $i => $line) {
+            $label = ($has_pkg && $i === 0) ? 'Package' : 'Item';
+            $data[] = array('name' => $label, 'value' => esc_html($line));
+        }
     }
     if (!empty($m['buddy'])) $data[] = array('name' => 'Buddies', 'value' => esc_html($m['buddy']));
     if (!empty($m['notes'])) $data[] = array('name' => 'Notes', 'value' => esc_html($m['notes']));
@@ -400,7 +454,14 @@ add_filter('woocommerce_cart_item_name', 'mbs_cart_item_name', 10, 3);
 function mbs_cart_item_name($name, $cart_item, $cart_item_key) {
     if (empty($cart_item['mbs'])) return $name;
     $m = $cart_item['mbs'];
-    $label = esc_html($m['athlete'] ? $m['athlete'] . ' — Photo Order' : 'Photo Order');
+    // Make the athlete's name the bold, prominent part of the cart line; keep the
+    // "— Photo Order" tag small and muted so the name is what stands out.
+    if (!empty($m['athlete'])) {
+        $label = '<span style="font-weight:800;font-size:1.1em;color:#0b1f3a">' . esc_html($m['athlete']) . '</span>'
+               . '<span style="color:#6b7a90;font-weight:500;font-size:.92em"> &mdash; Photo Order</span>';
+    } else {
+        $label = esc_html('Photo Order');
+    }
     // On the cart page, offer an "Edit this athlete" link back to the order form.
     if (function_exists('is_cart') && is_cart()) {
         $form_url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';

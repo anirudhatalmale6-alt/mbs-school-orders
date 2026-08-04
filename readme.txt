@@ -99,4 +99,15 @@ when the page is cached. A small version number shows at the bottom of the form.
 - The cart's checkout button now reads "Continue to Payment" so it's clear the
   final card entry is the next step (standard two-step: cart -> payment).
 
-Version 1.0.13
+== Prominent name, clean order lines, real product image (1.0.14) ==
+- The athlete's name is now bold and larger on the cart line, and bold on the
+  "Athlete" row, so it stands out.
+- Each ordered item now shows on its own labelled row (Package / Item). This fixes
+  a "<br>" that was showing as literal text inside the Square/WooPay checkout
+  order summary (that widget renders details as plain text).
+- The hidden order product now carries a clean branded "Photo Order" thumbnail
+  (assets/order-thumb.png) instead of WooCommerce's grey placeholder image, which
+  looked broken in the cart and on the payment page. Imported into your media
+  library automatically; no action needed.
+
+Version 1.0.14
