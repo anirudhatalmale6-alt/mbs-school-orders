@@ -5,12 +5,14 @@ Built for Mark Nicholas Photography / Manhattan Beach Studios.
 == What it does ==
 Gives each school/team its own private online order page (like a paper order form,
 but online). Parents pick a package (A/B/C or none), add extras with quantities,
-enter athlete + parent details, and pay by card through your existing Square account.
-Every order lands in WooCommerce > Orders with the full breakdown.
+enter athlete + parent details, and pay by card at checkout. Every order lands in
+WooCommerce > Orders with the full breakdown.
 
 == Requirements ==
 - WooCommerce active
-- WooCommerce Square plugin connected (for card payments)
+- Any WooCommerce card payment gateway enabled (WooPayments, Square, Stripe, etc.)
+  The plugin is gateway-neutral — it uses whatever you have turned on. Tip: enable
+  just ONE card option at checkout so parents aren't shown two side-by-side.
 
 == Install ==
 1. WordPress admin > Plugins > Add New > Upload Plugin.
@@ -126,4 +128,9 @@ Everything a school sells lives in includes/programs.php.
 Edit the file via your host's File Manager (SiteGround: Site Tools > File Manager >
 wp-content/plugins/mbs-school-orders/includes/programs.php) or FTP.
 
-Version 1.0.15
+== Gateway-neutral wording (1.0.16) ==
+- The order form's trust badge now reads "Secure encrypted card checkout" instead
+  of naming a specific processor, since the plugin works with whatever card gateway
+  you have enabled. No functional change to payments.
+
+Version 1.0.16

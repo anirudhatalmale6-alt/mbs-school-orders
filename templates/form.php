@@ -101,7 +101,7 @@
           <div id="liveLines"></div>
           <div class="sum-total"><span class="l">Subtotal</span><span class="v" id="liveTotal">$0</span></div>
           <div class="trust">
-            <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Secure card checkout via Square</div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Secure encrypted card checkout</div>
             <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Priced per item — never per day</div>
             <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg>Order multiple athletes in one cart</div>
           </div>
