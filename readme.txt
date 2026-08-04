@@ -61,4 +61,9 @@ page "Sports Photo Checkout" (holding the [woocommerce_checkout] shortcode) and
 automatically sends photo-order carts there for real card payment. Rental carts
 still go to the quote form, untouched. You don't need to configure anything.
 
-Version 1.0.7
+== Details carry into checkout ==
+The parent name, phone and email entered on the order form are (a) saved onto the
+order line in WooCommerce > Orders, and (b) pre-filled into the checkout billing
+fields so parents never type them twice.
+
+Version 1.0.8

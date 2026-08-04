@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.7
+ * Version:     1.0.8
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.7');
+define('MBS_SO_VER', '1.0.8');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 
@@ -404,6 +404,37 @@ function mbs_order_received_url($url, $order) {
         }
     }
     return $url;
+}
+
+// 6) Pre-fill the checkout's billing fields from what the parent already typed in
+//    the order form (name / phone / email), so they don't have to enter it twice.
+//    Only kicks in for photo-order carts; the buyer can still edit any field.
+function mbs_first_order_meta() {
+    if (!function_exists('WC') || is_null(WC()->cart)) return null;
+    foreach (WC()->cart->get_cart() as $item) {
+        if (!empty($item['mbs'])) return $item['mbs'];
+    }
+    return null;
+}
+function mbs_split_name($full) {
+    $full = trim((string) $full);
+    if ($full === '') return array('', '');
+    $parts = preg_split('/\s+/', $full, 2);
+    return array($parts[0], isset($parts[1]) ? $parts[1] : '');
+}
+add_filter('woocommerce_checkout_get_value', 'mbs_prefill_checkout', 10, 2);
+function mbs_prefill_checkout($value, $input) {
+    $m = mbs_first_order_meta();
+    if (!$m) return $value;
+    switch ($input) {
+        case 'billing_email': return !empty($m['email']) ? $m['email'] : $value;
+        case 'billing_phone': return !empty($m['phone']) ? $m['phone'] : $value;
+        case 'billing_first_name':
+            $n = mbs_split_name($m['parent'] ?? ''); return $n[0] !== '' ? $n[0] : $value;
+        case 'billing_last_name':
+            $n = mbs_split_name($m['parent'] ?? ''); return $n[1] !== '' ? $n[1] : $value;
+    }
+    return $value;
 }
 
 /* -------------------------------------------------------------------------
