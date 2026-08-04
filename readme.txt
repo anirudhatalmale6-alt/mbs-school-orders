@@ -73,4 +73,11 @@ fields so parents never type them twice.
 - A "Back to the order form" link appears on the cart and checkout so parents can
   return to add another athlete or fix a detail.
 
-Version 1.0.9
+== The form remembers entries ==
+The order form now remembers what a parent has typed (name, phone, email, notes,
+team, package) in their browser. If they go to the cart and come back - or reload
+the page - the form is still filled in, so nothing has to be re-entered. After an
+athlete is added to the cart, the athlete-specific fields clear for the next one
+while the contact details stay.
+
+Version 1.0.10

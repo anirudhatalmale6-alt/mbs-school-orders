@@ -190,13 +190,45 @@
         $('fAthFirst').value = ''; $('fAthLast').value = ''; $('fJersey').value = '';
         if ($('fNotes')) $('fNotes').value = '';
         $('fPkg').selectedIndex = 0; renderPkg();
+        saveForm();  // persist the kept contact info + cleared athlete fields for the next athlete
       })
       .catch(function () { btn.disabled = false; btn.innerHTML = orig; toast('Network error — please try again'); });
+  }
+
+  /* ---------- remember what was typed (so returning to the form doesn't wipe it) ---------- */
+  var PERSIST = ['fAthFirst', 'fAthLast', 'fJersey', 'fParFirst', 'fParLast', 'fPhone', 'fEmail', 'fNotes', 'fDivision', 'fSport', 'fPkg'];
+  var LSKEY = 'mbs_form_' + (MBS.programKey || 'x');
+  function saveForm() {
+    try {
+      var data = {};
+      PERSIST.forEach(function (id) { var el = $(id); if (el) data[id] = el.value; });
+      localStorage.setItem(LSKEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+  function restoreForm() {
+    try {
+      var raw = localStorage.getItem(LSKEY); if (!raw) return;
+      var data = JSON.parse(raw);
+      PERSIST.forEach(function (id) {
+        var el = $(id); if (!el || data[id] == null) return;
+        if (el.tagName === 'SELECT') {
+          var ok = false;
+          for (var i = 0; i < el.options.length; i++) { if (el.options[i].value === data[id] || el.options[i].text === data[id]) { ok = true; break; } }
+          if (ok) el.value = data[id];
+        } else {
+          el.value = data[id];
+        }
+      });
+    } catch (e) {}
   }
 
   /* ---------- wire events ---------- */
   function bind() {
     $('fPkg').addEventListener('change', renderPkg);
+    // Save the form on any edit, so navigating away and back keeps the entries.
+    var app = document.querySelector('.mbs-app');
+    app.addEventListener('input', saveForm);
+    app.addEventListener('change', saveForm);
     $('mbsAddBtn').addEventListener('click', addToCart);
     $('mbsAddAnother').addEventListener('click', function () { $('mbsAdded').style.display = 'none'; $('fAthFirst').focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
     $('lbClose').addEventListener('click', closeLb);
@@ -212,6 +244,7 @@
 
   /* ---------- init ---------- */
   initProgram();
+  restoreForm();   // bring back anything the parent typed before navigating away
   renderAddons();
   renderPkg();
   bind();
