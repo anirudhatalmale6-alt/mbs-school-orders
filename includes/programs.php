@@ -38,6 +38,8 @@ function mbs_programs() {
                 array('group' => 'Prints & Wallets', 'id' => 'jwallets',  't' => '(4) Jumbo Wallets', 'p' => 12, 'img' => 'samples/prints.jpg'),
                 array('group' => 'Prints & Wallets', 'id' => 'swallets',  't' => '(8) Small Wallets', 'p' => 12, 'img' => 'samples/prints.jpg'),
                 array('group' => 'Prints & Wallets', 'id' => 'buddy',     't' => 'Buddy Photo — (2) 5×7 Images', 'p' => 14, 'buddy' => true, 'img' => 'samples/prints.jpg'),
+                array('group' => 'Prints & Wallets', 'id' => 'digital',   't' => 'Digital Print', 'p' => 35, 'img' => 'samples/prints.jpg'),
+                array('group' => 'Prints & Wallets', 'id' => 'ornament',  't' => 'Holiday Ornament', 'p' => 14, 'img' => 'samples/prints.jpg'),
                 array('group' => 'Keepsakes & Gifts', 'id' => 'mug',      't' => 'Photo Mug', 'p' => 25, 'img' => 'samples/mug.jpg'),
                 array('group' => 'Keepsakes & Gifts', 'id' => 'tmug',     't' => 'Travel Mug', 'p' => 30, 'img' => 'samples/travelmug.jpg'),
                 array('group' => 'Keepsakes & Gifts', 'id' => 'magnet',   't' => 'Photo Magnet', 'p' => 10, 'img' => 'samples/magnet.jpg'),
