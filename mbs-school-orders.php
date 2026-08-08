@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.17
+ * Version:     1.0.18
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.17');
+define('MBS_SO_VER', '1.0.18');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -18,6 +18,7 @@ define('MBS_SO_URL', plugin_dir_url(__FILE__));
 define('MBS_THUMB_VER', '2');
 
 require_once MBS_SO_DIR . 'includes/programs.php';
+require_once MBS_SO_DIR . 'includes/mbs-export.php';
 
 /* -------------------------------------------------------------------------
  *  Admin notice if WooCommerce is not active
@@ -672,4 +673,21 @@ function mbs_order_line_item($item, $cart_item_key, $values, $order) {
     if (!empty($m['lines'])) $item->add_meta_data('Order details', implode('  |  ', $m['lines']), true);
     if ($m['buddy'])    $item->add_meta_data('Buddies', $m['buddy'], true);
     if (!empty($m['notes'])) $item->add_meta_data('Notes', $m['notes'], true);
+
+    // Hidden, machine-readable copies so the Manufacturing Export is exact
+    // (no parsing of the human "Order details" string). Underscore prefix keeps
+    // them out of the order display. See includes/mbs-export.php.
+    if ($m['program']) $item->add_meta_data('_mbs_school', $m['program'], true);
+    $exact = array();
+    foreach ((array) $m['lines'] as $ln) {
+        $name = preg_replace('/\s*—\s*\$[\d,]+\.\d{2}\s*$/u', '', (string) $ln);
+        $qty  = 1;
+        if (preg_match('/\s*×\s*(\d+)\s*$/u', $name, $mq)) {
+            $qty  = max(1, (int) $mq[1]);
+            $name = preg_replace('/\s*×\s*\d+\s*$/u', '', $name);
+        }
+        $name = trim($name);
+        if ($name !== '') $exact[] = array('name' => $name, 'qty' => $qty);
+    }
+    if ($exact) $item->add_meta_data('_mbs_items', wp_json_encode($exact), true);
 }
