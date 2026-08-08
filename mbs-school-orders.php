@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.16
+ * Version:     1.0.17
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.16');
+define('MBS_SO_VER', '1.0.17');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -539,8 +539,20 @@ function mbs_maybe_fix_checkout_button() {
     add_action('woocommerce_proceed_to_checkout', 'mbs_render_checkout_button', 20);
 }
 function mbs_render_checkout_button() {
-    echo '<a href="' . esc_url(wc_get_checkout_url()) . '" class="checkout-button button alt wc-forward mbs-checkout-button">'
-       . 'Continue to Payment &rarr;</a>';
+    // Link straight to our real-payment checkout page (don't rely on the filtered
+    // wc_get_checkout_url, which an edge case could leave empty).
+    $pid = mbs_get_checkout_page_id();
+    $url = $pid ? get_permalink($pid) : wc_get_checkout_url();
+    // IMPORTANT: this site's theme turns the checkout button into a "Request a Quote"
+    // action by binding JS to the standard WooCommerce classes (.checkout-button / .wc-forward)
+    // and cancelling the click. That hijacked OUR button too, so it did nothing for shoppers.
+    // Fix: (a) do NOT use those classes, and (b) force navigation in JS via an inline handler
+    // that runs first, so even if something calls preventDefault, we still go to checkout.
+    echo '<a href="' . esc_url($url) . '"'
+       . ' class="button alt mbs-checkout-button"'
+       . ' data-mbs-checkout="1"'
+       . ' onclick="window.location.href=this.href;return false;"'
+       . ' style="display:inline-block">Continue to Payment &rarr;</a>';
 }
 
 // 3) Undo the theme's "Update cart" -> "Update Quote" relabel on the cart page
