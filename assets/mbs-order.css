@@ -203,6 +203,10 @@ footer b{color:#fff;font-family:'Barlow Condensed';letter-spacing:.08em;text-tra
 /* ---- v1.0.1 theme-override guards (beat Qode's global heading/link colors) ---- */
 .mbs-app header.masthead h1.title{color:#fff !important;line-height:.98 !important;margin:14px 0 20px !important;padding-bottom:2px !important;height:auto !important;max-height:none !important;min-height:0 !important;overflow:visible !important;display:block !important}
 .mbs-app header.masthead h1.title .yr{color:var(--scarlet) !important;-webkit-text-stroke:1px rgba(255,255,255,.15)}
+/* v1.0.20 — extra-specific guard so the theme's mobile heading color can't turn the title black */
+html body .mbs-app header.masthead h1.title,
+html body .mbs-app header.masthead h1.title *{color:#fff !important}
+html body .mbs-app header.masthead h1.title .yr{color:var(--scarlet) !important}
 .mbs-app header.masthead .eyebrow{color:var(--gold) !important;margin:0 0 4px !important}
 .mbs-app header.masthead .subhead{color:#c3cfe0 !important;margin:6px 0 0 !important;position:static !important;display:block !important;clear:both !important}
 .mbs-app header.masthead .studio{color:#b9c6dc !important}

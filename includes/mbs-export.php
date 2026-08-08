@@ -127,11 +127,11 @@ function mbs_export_run() {
             fputcsv($out, array($a['school'], $a['item'], $a['qty'], count($a['fam'])));
         }
     } else {
-        fputcsv($out, array('School / Program', 'Item', 'Qty', 'Athlete', 'Jersey', 'Team', 'Parent', 'Email', 'Phone', 'Order #', 'Date', 'Status'));
+        fputcsv($out, array('School / Program', 'Item', 'Qty', 'Athlete', 'Jersey', 'Team', 'Parent', 'Email', 'Phone', 'Address', 'Notes', 'Order #', 'Date', 'Status'));
         foreach ($rows as $r) {
             fputcsv($out, array(
                 $r['school'], $r['item'], $r['qty'], $r['athlete'], $r['jersey'], $r['team'],
-                $r['parent'], $r['email'], $r['phone'], $r['order'], $r['date'], $r['status'],
+                $r['parent'], $r['email'], $r['phone'], $r['address'], $r['notes'], $r['order'], $r['date'], $r['status'],
             ));
         }
     }
@@ -167,6 +167,14 @@ function mbs_export_collect($statuses, $from, $to, $school_f) {
         $date = $order->get_date_created() ? $order->get_date_created()->date('Y-m-d') : '';
         $stat = $order->get_status();
 
+        // Billing address as one clean line (repeated on every row of this order).
+        $addr_parts = array_filter(array(
+            $order->get_billing_address_1(), $order->get_billing_address_2(),
+            $order->get_billing_city(), $order->get_billing_state(),
+            $order->get_billing_postcode(), $order->get_billing_country(),
+        ));
+        $address = implode(', ', $addr_parts);
+
         foreach ($order->get_items() as $item) {
             $athlete = (string) $item->get_meta('Athlete');
             $jersey  = '';
@@ -178,6 +186,7 @@ function mbs_export_collect($statuses, $from, $to, $school_f) {
             $parent = (string) $item->get_meta('Parent');
             $email  = (string) $item->get_meta('Email');
             $phone  = (string) $item->get_meta('Phone');
+            $notes  = (string) $item->get_meta('Notes');
 
             // School / program: exact meta first, else the item-name prefix "Program — Athlete".
             $school = (string) $item->get_meta('_mbs_school');
@@ -212,6 +221,7 @@ function mbs_export_collect($statuses, $from, $to, $school_f) {
                     'school' => $school, 'item' => $it['name'], 'qty' => $it['qty'],
                     'athlete' => $athlete, 'jersey' => $jersey, 'team' => $team,
                     'parent' => $parent, 'email' => $email, 'phone' => $phone,
+                    'address' => $address, 'notes' => $notes,
                     'order' => $oid, 'date' => $date, 'status' => $stat,
                 );
             }
