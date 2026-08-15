@@ -44,6 +44,20 @@
   function initProgram() {
     if (P.logoUrl) { $('crestLogo').src = P.logoUrl; $('crestLogo').style.display = 'block'; $('crestShield').style.display = 'none'; }
     else { $('crestLogo').style.display = 'none'; $('crestShield').style.display = 'flex'; }
+
+    /* ---- where the logo lives ----
+       Beside the heading it competes with a huge headline and stays small. On
+       the right it gets its own column and can be three times the size, which
+       is the point: the school or the event should feel like it's theirs. */
+    var slot = document.querySelector('.mbs-app .logo-slot');
+    if (slot && P.logoSpot === 'right') {
+      var side = $('heroSide');
+      side.insertBefore(slot, side.firstChild);
+      slot.className = 'logo-slot logo-right';
+      document.querySelector('.mbs-app .mh-hero').classList.add('logo-on-right');
+    }
+    // The "How ordering works" box can be dropped to leave the logo more room.
+    if ($('howCard')) $('howCard').style.display = (typeof P.showHow === 'undefined' || Number(P.showHow)) ? '' : 'none';
     $('crestIni').textContent = P.crest || '';
     $('crestMas').textContent = P.crestMascot || '';
     $('mascotLine').textContent = P.mascot || '';

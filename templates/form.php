@@ -24,13 +24,15 @@
             <p class="prodlink" id="progProducts" style="display:none;margin:8px 0 0;font-size:15px">&#128247; <a id="progProductsLink" href="#" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-weight:600">See photos &amp; descriptions of every product &rarr;</a></p>
           </div>
         </div>
-        <div class="mh-card">
+        <div class="hero-side" id="heroSide">
+        <div class="mh-card" id="howCard">
           <h4>How ordering works</h4>
           <ol>
             <li id="stepWho">Enter the athlete &amp; parent details</li>
             <li id="stepPick">Choose a package (or none) &amp; add extras</li>
             <li>Pay securely by card — done</li>
           </ol>
+        </div>
         </div>
       </div>
     </div>

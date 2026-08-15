@@ -38,8 +38,14 @@ header.masthead::after{content:"";position:absolute;inset:0;pointer-events:none;
   clip-path:polygon(50% 0,100% 0,100% 60%,50% 100%,0 60%,0 0);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;box-shadow:0 12px 26px -12px rgba(0,0,0,.55)}
 .crest .ini{font-family:'Anton';font-size:33px;color:#fff;line-height:.9}
 .crest .mas{font-family:'Barlow Condensed';font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--gold)}
-.logo-slot{display:flex;flex-direction:column;align-items:center;gap:6px}
-.crest-logo{width:120px;height:auto;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45))}
+.logo-slot{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:100%}
+.crest-logo{width:120px;height:auto;max-width:100%;filter:drop-shadow(0 8px 16px rgba(0,0,0,.45))}
+/* Logo given its own column on the right, at a size that actually reads as branding. */
+.hero-side{display:flex;flex-direction:column;gap:20px;align-items:stretch;min-width:0}
+.logo-slot.logo-right{align-items:center;padding:4px 0}
+.logo-slot.logo-right .crest-logo{width:auto;max-width:100%;max-height:210px}
+.logo-slot.logo-right .crest{width:120px;height:136px}
+.mh-hero.logo-on-right{align-items:center}
 .logo-hint{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7f8ea7;font-family:'Barlow Condensed';font-weight:600}
 .eyebrow{font-family:'Barlow Condensed',sans-serif;font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:14px;color:var(--gold);display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:"";width:34px;height:2px;background:var(--gold)}
@@ -200,6 +206,14 @@ footer b{color:#fff;font-family:'Barlow Condensed';letter-spacing:.08em;text-tra
 
 .mbs-app{--pagepad:0}
 .mbs-app header.masthead{border-radius:16px;overflow:hidden}
+/* Nothing in the hero may be height-capped or clipped by a theme rule. */
+.mbs-app header.masthead .mh-hero,.mbs-app header.masthead .hero-head,
+.mbs-app header.masthead .hero-side,.mbs-app header.masthead .logo-slot{
+  max-height:none !important;height:auto !important;overflow:visible !important}
+/* NB: do NOT lift max-height off the image here — the right-hand layout caps it
+   on purpose, and an uncapped logo renders enormous. */
+.mbs-app header.masthead .crest-logo{object-fit:contain}
+.mbs-app header.masthead .logo-slot.logo-right .crest-logo{width:auto;max-width:100%;max-height:210px}
 .mbs-app main{padding:26px 0 10px}
 
 /* ---- v1.0.1 theme-override guards (beat Qode's global heading/link colors) ---- */

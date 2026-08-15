@@ -224,3 +224,18 @@ shows.
 == Product photos from the screen (1.3.0) ==
 Every package and item row now has Choose / Remove for its sample photo, straight
 from the media library. The photos already set up stay exactly as they are.
+
+== Give the logo real room (1.3.1) ==
+Two settings under the logo on any form:
+- Logo placement: "Beside the heading (small)" — how it has always been — or
+  "On the right, large", which gives the logo its own column at up to three times
+  the size. Worth using when you want the school, team or event to feel like the
+  page is theirs.
+- "How ordering works": untick to drop the three-step box and hand the logo the
+  whole right-hand side.
+Both default to the existing behaviour, so no form changes unless you change it.
+
+A logo can also no longer be clipped or squashed by a theme rule: the header,
+the hero and the logo slot are all pinned to auto height with visible overflow,
+and the logo is capped so a very large file can't blow the header out. Checked at
+nine widths from 1440px down to 360px.

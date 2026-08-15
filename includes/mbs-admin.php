@@ -139,6 +139,8 @@ function mbs_program_defaults() {
         'crest'         => '',
         'crestMascot'   => '',
         'logo'          => '',
+        'logoSpot'      => 'left',   // left = beside the heading, right = its own big column
+        'showHow'       => 1,
         'sports'        => array('Football'),
         'divisionLabel' => 'Team / Division',
         'divisions'     => array('Varsity', 'JV', 'Freshman'),
@@ -435,6 +437,26 @@ function mbs_admin_edit_screen() {
                                  style="max-height:80px;background:#0b1f3a;padding:8px;border-radius:8px">
                         </div>
                         <p class="description">A white or single-colour logo works best — it sits on the dark navy header.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_logospot">Logo placement</label></th>
+                    <td>
+                        <select name="logoSpot" id="mbs_logospot">
+                            <option value="left" <?php selected(($p['logoSpot'] ?? 'left'), 'left'); ?>>Beside the heading (small)</option>
+                            <option value="right" <?php selected(($p['logoSpot'] ?? 'left'), 'right'); ?>>On the right, large</option>
+                        </select>
+                        <p class="description">
+                            "On the right, large" gives the logo its own column and up to three times the size — worth it when
+                            you want the school, team or event to feel like the page belongs to them.
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">"How ordering works"</th>
+                    <td>
+                        <label><input type="checkbox" name="showHow" value="1" <?php checked(!empty($p['showHow'])); ?>> Show the three-step box in the header</label>
+                        <p class="description">Untick it to give the logo the whole right-hand side.</p>
                     </td>
                 </tr>
                 <tr>
@@ -939,6 +961,8 @@ function mbs_handle_save_program() {
     $prog['showWho']       = empty($_POST['showWho'])   ? 0 : 1;
     $prog['showBuyer']     = empty($_POST['showBuyer']) ? 0 : 1;
     $prog['showNotes']     = empty($_POST['showNotes']) ? 0 : 1;
+    $prog['showHow']       = empty($_POST['showHow']) ? 0 : 1;
+    $prog['logoSpot']      = (isset($_POST['logoSpot']) && $_POST['logoSpot'] === 'right') ? 'right' : 'left';
     // An order must carry a name, so refuse to switch both name blocks off.
     if (!$prog['showWho'] && !$prog['showBuyer']) $prog['showWho'] = 1;
     $mode = function ($v) { return in_array($v, array('req', 'opt', 'off'), true) ? $v : 'req'; };
