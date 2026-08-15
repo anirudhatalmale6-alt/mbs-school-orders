@@ -259,3 +259,18 @@ a stale cache can no longer half-apply an update.
 
 Nothing to configure. It is still worth clearing the cache after an update so you
 see changes immediately, but a missed cache clear can no longer break the layout.
+
+== Making that fix actually stick (1.3.3) ==
+1.3.2 moved the styling into the page as an inline block, marked with the flags
+speed plugins are supposed to respect. Checking the live Sharks page afterwards,
+the block had been removed from the page anyway and the old styling was still in
+force — this host's optimizer collects inline styles too and ignores those flags.
+
+From 1.3.3 the styling is carried inside the form's own script and applied by it.
+A speed plugin looks through the page for stylesheets; it cannot reach inside a
+script, and this script has always come through untouched — that is why the
+behaviour half of every past update worked while the styling half did not.
+
+This does mean the styling arrives with the JavaScript. That costs nothing here:
+the packages, extras, prices and totals are all drawn by that same script, so a
+browser that isn't running it has no order form to style in the first place.

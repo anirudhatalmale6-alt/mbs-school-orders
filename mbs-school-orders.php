@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS Order Forms
  * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
- * Version:     1.3.2
+ * Version:     1.3.3
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.3.2');
+define('MBS_SO_VER', '1.3.3');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -308,34 +308,52 @@ function mbs_shortcode($atts) {
     include MBS_SO_DIR . 'templates/form.php';
     $html = ob_get_clean();
 
-    // The form's stylesheet, printed INLINE rather than enqueued as a file.
+    // The form's stylesheet, delivered as part of the SCRIPT payload and applied by it.
     //
-    // Why: the host's optimizer (SiteGround Speed Optimizer / WP Rocket) combines every
-    // enqueued stylesheet into one cached bundle. That bundle is only rebuilt when its
-    // cache is purged — so after a plugin update the page can serve NEW markup and NEW
-    // inline JS while still painting from the OLD CSS. That is exactly what happened on
-    // the Sharks page in 1.3.1: the JS moved the logo into the right-hand column, but the
-    // stale bundle had none of the rules that size it there, so it rendered at the old
-    // 120px. Markup, script and styles have to ship together or the layout tears.
-    // Inline can't be combined away, and it can't go stale — it is read per request.
-    // (Same reasoning as the script block below, which is why the JS half was already fine.)
+    // The history here matters, because two gentler approaches were already tried and beaten:
+    //
+    //  1. Enqueued as a file. The host's optimizer (SiteGround Speed Optimizer / WP Rocket)
+    //     folds every enqueued stylesheet into one combined bundle and serves that bundle
+    //     from its own cache. After a plugin update the page therefore served NEW markup and
+    //     NEW inline JS while still painting from OLD CSS. On the Sharks page in 1.3.1 the
+    //     script moved the logo into the right-hand column and nothing sized it there, so it
+    //     rendered at the old 120px and looked broken.
+    //
+    //  2. Printed as an inline <style> with data-no-optimize / data-no-minify / data-cfasync
+    //     (1.3.2). Measured on the live page afterwards: the block was gone from the HTML
+    //     entirely and the computed styles were still the old ones. This optimizer hoovers up
+    //     inline styles as well, and does not honour those attributes for them.
+    //
+    // So the stylesheet now travels inside the inline <script> as a string and is applied by
+    // it. A CSS optimizer parses HTML for stylesheets; it cannot reach into a JavaScript
+    // string literal, and this script block has always survived intact — it is why the JS
+    // half of every past update landed correctly while the CSS half did not.
+    //
+    // This does tie styling to JavaScript, which would normally be a poor trade. Here it
+    // costs nothing: the packages, extras, prices and totals are all rendered by this same
+    // script, so a form with no JavaScript is already a blank form. No new way to fail.
     $css = file_get_contents(MBS_SO_DIR . 'assets/mbs-order.css');
 
     // This form's own colours, if it has any. Must come AFTER the base stylesheet so its
     // custom properties win.
-    $prog_css = mbs_program_css($prog);
-
-    $html = '<style data-no-optimize="1" data-no-minify="1" data-cfasync="false">'
-          . "/* mbs-order-forms styles */\n" . $css . "\n" . $prog_css
-          . '</style>' . $html;
+    $css .= "\n" . mbs_program_css($prog);
 
     // Print the config + JS INLINE (not as an enqueued external file). Aggressive optimizers
     // on the host (WP Rocket, SiteGround Optimizer) were combining the external file into a
     // bundle that 404'd, so the form never initialised. Inline can't be combined away.
     // data-no-optimize / data-cfasync tell those plugins to leave this block alone.
+    //
+    // The style injection is the FIRST statement, before the config and before the form code,
+    // so the styles are in place by the time anything renders or measures itself.
     $js = file_get_contents(MBS_SO_DIR . 'assets/mbs-order.js');
     $html .= "\n<script data-no-optimize=\"1\" data-no-minify=\"1\" data-cfasync=\"false\">"
-           . "/* mbs-school-orders inline */\nwindow.MBS = " . wp_json_encode($config) . ";\n"
+           . "/* mbs-school-orders inline */\n"
+           . "(function(){/* mbs-order-forms styles */"
+           . "if(document.getElementById('mbs-inline-css'))return;"
+           . "var s=document.createElement('style');s.id='mbs-inline-css';"
+           . "s.textContent=" . wp_json_encode($css) . ";"
+           . "(document.head||document.documentElement).appendChild(s);})();\n"
+           . "window.MBS = " . wp_json_encode($config) . ";\n"
            . $js . "\n</script>\n";
 
     return $html;
