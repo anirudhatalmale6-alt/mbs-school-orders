@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS Order Forms
  * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
- * Version:     1.3.1
+ * Version:     1.3.2
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.3.1');
+define('MBS_SO_VER', '1.3.2');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -264,7 +264,8 @@ function mbs_shortcode($atts) {
     // JetBrains Mono). Without these a visitor's browser falls back to a system font whose
     // taller metrics can overlap the headline — and the design just looks off.
     wp_enqueue_style('mbs-fonts', 'https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono&display=swap', array(), null);
-    wp_enqueue_style('mbs-order', MBS_SO_URL . 'assets/mbs-order.css', array('mbs-fonts'), MBS_SO_VER);
+    // NB: mbs-order.css is deliberately NOT enqueued — it is printed inline below.
+    // See the note above that <style> block for why.
 
     // Build the config the front-end renders from (single source of truth = PHP config above).
     $prog_js = $prog;
@@ -307,12 +308,26 @@ function mbs_shortcode($atts) {
     include MBS_SO_DIR . 'templates/form.php';
     $html = ob_get_clean();
 
-    // This form's own colours, if it has any. Inline (not enqueued) for the same
-    // reason as the script below: nothing can combine or defer it away.
+    // The form's stylesheet, printed INLINE rather than enqueued as a file.
+    //
+    // Why: the host's optimizer (SiteGround Speed Optimizer / WP Rocket) combines every
+    // enqueued stylesheet into one cached bundle. That bundle is only rebuilt when its
+    // cache is purged — so after a plugin update the page can serve NEW markup and NEW
+    // inline JS while still painting from the OLD CSS. That is exactly what happened on
+    // the Sharks page in 1.3.1: the JS moved the logo into the right-hand column, but the
+    // stale bundle had none of the rules that size it there, so it rendered at the old
+    // 120px. Markup, script and styles have to ship together or the layout tears.
+    // Inline can't be combined away, and it can't go stale — it is read per request.
+    // (Same reasoning as the script block below, which is why the JS half was already fine.)
+    $css = file_get_contents(MBS_SO_DIR . 'assets/mbs-order.css');
+
+    // This form's own colours, if it has any. Must come AFTER the base stylesheet so its
+    // custom properties win.
     $prog_css = mbs_program_css($prog);
-    if ($prog_css !== '') {
-        $html = '<style data-no-optimize="1" data-no-minify="1">' . $prog_css . '</style>' . $html;
-    }
+
+    $html = '<style data-no-optimize="1" data-no-minify="1" data-cfasync="false">'
+          . "/* mbs-order-forms styles */\n" . $css . "\n" . $prog_css
+          . '</style>' . $html;
 
     // Print the config + JS INLINE (not as an enqueued external file). Aggressive optimizers
     // on the host (WP Rocket, SiteGround Optimizer) were combining the external file into a
@@ -332,6 +347,12 @@ function mbs_shortcode($atts) {
 add_filter('rocket_delay_js_exclusions', function ($e) { $e[] = 'mbs-school-orders'; $e[] = 'window.MBS'; return $e; });
 add_filter('rocket_excluded_inline_js_content', function ($e) { $e[] = 'mbs-school-orders'; return $e; });
 add_filter('sgo_js_minify_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
+// Same again for the inline stylesheet. data-no-optimize already covers most cases;
+// these belt-and-braces filters stop the two optimizers on this host from folding it
+// into a combined bundle, which is how the form once ended up painting from stale CSS.
+add_filter('sgo_css_combine_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
+add_filter('sgo_css_minify_exclude',  function ($e) { $e[] = 'mbs-order'; return $e; });
+add_filter('rocket_excluded_inline_css_content', function ($e) { $e[] = 'mbs-school-orders'; return $e; });
 add_filter('sgo_javascript_combine_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
 add_filter('sgo_js_async_exclude', function ($e) { $e[] = 'mbs-order'; return $e; });
 

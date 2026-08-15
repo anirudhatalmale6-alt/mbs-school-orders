@@ -239,3 +239,23 @@ A logo can also no longer be clipped or squashed by a theme rule: the header,
 the hero and the logo slot are all pinned to auto height with visible overflow,
 and the logo is capped so a very large file can't blow the header out. Checked at
 nine widths from 1440px down to 360px.
+
+== Why the Sharks logo still looked wrong on 1.3.1 (1.3.2) ==
+The form's stylesheet used to be loaded as a separate file. Your host's speed
+plugin combines every stylesheet on the site into one bundle and serves that
+bundle from its cache, so after a plugin update the page could show the NEW
+layout and NEW behaviour while still painting with the OLD styles until that
+cache happened to be cleared.
+
+That is what the Sharks page was doing. The page was genuinely on 1.3.1 — it had
+moved the logo into the right-hand column — but the bundle it was painting from
+predated 1.3.1, so none of the rules that size a logo in that column existed and
+it rendered at the old small size.
+
+From 1.3.2 the stylesheet is delivered inside the page itself, alongside the
+script, which has worked this way for a while for the same reason. Layout,
+behaviour and styling now always ship together and cannot fall out of step, and
+a stale cache can no longer half-apply an update.
+
+Nothing to configure. It is still worth clearing the cache after an update so you
+see changes immediately, but a missed cache clear can no longer break the layout.
