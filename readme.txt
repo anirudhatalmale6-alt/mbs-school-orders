@@ -25,29 +25,42 @@ WooCommerce > Orders with the full breakdown.
 2. WooCommerce > Settings > Tax > Standard rates > Insert row:
    Rate % = 9.5000  (Redondo). Name it "Sales Tax". Save.
 
-== Create a school's private page ==
-1. Pages > Add New. Title it e.g. "Redondo Union Sports 2026".
-2. In the content, add this shortcode:
-      [mbs_order_form program="redondo"]
-3. Publish. Use a full-width / no-sidebar page template if your theme offers one.
-4. Keep it private simply by NOT adding it to any menu — share the page's URL
-   with the school. It never appears in your shop or search.
+== Add or edit a school (no code) ==
+Everything about a school is edited in WooCommerce > School Order Forms.
 
-== Add another school/team later ==
-Open includes/programs.php, copy the "redondo" block, give it a new key
-(e.g. "sharks"), change the name/logo/sports/divisions/prices, save.
-Then make a new page with [mbs_order_form program="sharks"].
-Each program can have its own prices, sports, and division list.
+To set up a new school the quick way:
+1. WooCommerce > School Order Forms.
+2. Find a school that's close to the new one and click Duplicate.
+3. Change the name, the shortcode key, the logo, the teams/divisions and any
+   prices that differ. Untick "Show" on anything this school doesn't sell.
+4. Tick "Create the order page for me when I save", then Save.
+5. You get a published page with the shortcode already on it. That link is what
+   you send the school — it isn't in any menu, so nobody finds it by browsing.
+
+Notes:
+- Untick "Show" instead of deleting when a product is only paused. The item stays
+  on file and past orders keep making sense.
+- Deleting a school leaves its WordPress page alone. Remove that from Pages
+  yourself if you want it gone.
+- Sample photos in the "See sample" popups are set up for you — send new ones over
+  and they'll be dropped in.
+
+== Where the schools are stored ==
+In the database, edited through the screen above. includes/programs.php is only
+the starting data, copied in once when v1.1.0 is first activated. Editing that
+file after that has no effect.
 
 == Logos ==
-Drop a transparent PNG into /assets and set 'logo' => 'yourfile.png' in the program.
-The included redondo-white.png is the Sea Hawks mark.
+On the school's edit screen, click "Choose from Media Library" and pick the logo.
+A white or single-colour transparent PNG works best — it sits on the dark navy
+header. The included redondo-white.png is the Sea Hawks mark.
 
 == Sample product photos ==
-Each item's "See sample" popup can show a real photo. Drop a JPG/PNG into
-/assets/samples and set 'img' => 'samples/yourphoto.jpg' on that package or add-on
-in includes/programs.php. Leave 'img' off and the item shows a neutral placeholder.
-To swap a photo later, just replace the file in /assets/samples with the same name.
+Each item's "See sample" popup can show a real photo. The photos already set up
+stay attached to their items through any edit — you'll see a thumbnail next to each
+row on the edit screen. An item with no photo shows a neutral placeholder.
+To swap a photo yourself, replace the file in /assets/samples keeping the same
+filename. To add photos to new items, send them over and they'll be wired in.
 
 == Note on the "/day" pricing and "Request a Quote" button ==
 This site still carries "quote mode" code in the Bridge child theme from its
@@ -95,8 +108,8 @@ when the page is cached. A small version number shows at the bottom of the form.
 
 == Products link + clearer labels (1.0.13) ==
 - Optional "See photos & descriptions of every product" link at the top of the
-  form. Set 'productsUrl' on the program in includes/programs.php (already set to
-  www.marknicholasphotography.com/products for Redondo); leave '' to hide it.
+  form. Set it in the "Products link" box on the school's edit screen (already set
+  to www.marknicholasphotography.com/products for Redondo); leave it blank to hide it.
 - The cart's "back" link now reads "CLICK HERE to add another athlete".
 - The cart's checkout button now reads "Continue to Payment" so it's clear the
   final card entry is the next step (standard two-step: cart -> payment).
@@ -120,13 +133,13 @@ when the page is cached. A small version number shows at the bottom of the form.
   MBS_THUMB_VER and replace assets/order-thumb.png.
 
 == How to add products / change pricing ==
-Everything a school sells lives in includes/programs.php.
-- Change a package price: find the 'packages' block, edit the 'price' number.
-- Change an add-on price: find the 'addons' block, edit that item's 'p' number.
-- Add a new add-on: copy an existing addon line, give it a new 'id', set its label
-  't' and price 'p'. Save. It appears on the form automatically.
-Edit the file via your host's File Manager (SiteGround: Site Tools > File Manager >
-wp-content/plugins/mbs-school-orders/includes/programs.php) or FTP.
+All of it is on the school's edit screen in WooCommerce > School Order Forms.
+- Change a package price: edit the Price box on that package row.
+- Change an add-on price: edit the Price box on that item's row.
+- Add a new item: "+ Add an item", then set its group, name and price.
+- Stop selling something: untick "Show" on its row (keeps it on file), or Remove
+  the row to delete it outright.
+Save, then clear your cache (WP Rocket / SiteGround) so parents see the change.
 
 == Gateway-neutral wording (1.0.16) ==
 - The order form's trust badge now reads "Secure encrypted card checkout" instead
@@ -134,3 +147,19 @@ wp-content/plugins/mbs-school-orders/includes/programs.php) or FTP.
   you have enabled. No functional change to payments.
 
 Version 1.0.16
+
+== School Order Forms manager (1.1.0) ==
+Schools are no longer defined in code. A new screen at WooCommerce > School Order
+Forms lists every school with its page link and Edit / Duplicate / Delete, and the
+edit screen covers the name, header, logo, sports, teams/divisions, deadline,
+products link, packages and every add-on.
+- Duplicate copies a whole school, product list and all, so a new one takes a
+  couple of minutes.
+- Saving can create the order page for you, shortcode already in place.
+- Your existing Redondo setup is copied into the database automatically the first
+  time this version runs. Nothing to retype, and the live page keeps working.
+- Untick "Show" to pause a package or item without losing it. Anything switched
+  off can't be ordered, even through a hand-made request.
+- Renaming a school's shortcode key rewrites the shortcode on its existing page,
+  so the page doesn't break.
+- Deleting a school leaves its WordPress page in place, on purpose.

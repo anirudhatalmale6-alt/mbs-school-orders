@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS School Orders
  * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.0.20
+ * Version:     1.1.0
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,15 +10,30 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.0.20');
+define('MBS_SO_VER', '1.1.0');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
 // auto default get the new one. A thumbnail the client set themselves is untouched.
 define('MBS_THUMB_VER', '2');
 
-require_once MBS_SO_DIR . 'includes/programs.php';
+require_once MBS_SO_DIR . 'includes/programs.php';   // seed data only — see mbs-admin.php
+require_once MBS_SO_DIR . 'includes/mbs-admin.php';  // School Order Forms manager + program storage
 require_once MBS_SO_DIR . 'includes/mbs-export.php';
+
+/**
+ * Resolve an image reference to a URL.
+ *
+ * Program images can be either a file we ship in /assets ("samples/mug.jpg") or,
+ * for logos picked in the admin screen, a full media-library URL. Anything that
+ * already looks like a URL or an absolute path is passed straight through.
+ */
+function mbs_asset_url($v) {
+    $v = (string) $v;
+    if ($v === '') return '';
+    if (preg_match('#^(https?:)?//#', $v) || $v[0] === '/') return $v;
+    return MBS_SO_URL . 'assets/' . $v;
+}
 
 /* -------------------------------------------------------------------------
  *  Admin notice if WooCommerce is not active
@@ -156,6 +171,9 @@ function mbs_get_checkout_page_id() {
 }
 
 register_activation_hook(__FILE__, function () {
+    // Copy the file-defined schools into the database on first activation, so the
+    // existing live order pages keep working and nothing has to be retyped.
+    mbs_maybe_seed_programs();
     if (class_exists('WooCommerce')) {
         mbs_get_container_id();
         mbs_get_checkout_page_id();
@@ -168,17 +186,15 @@ register_activation_hook(__FILE__, function () {
 add_shortcode('mbs_order_form', 'mbs_shortcode');
 function mbs_shortcode($atts) {
     $atts = shortcode_atts(array('program' => 'redondo'), $atts, 'mbs_order_form');
-    $programs = mbs_programs();
-    $key = sanitize_key($atts['program']);
+    $key  = sanitize_key($atts['program']);
+    $prog = mbs_get_program($key);   // from the School Order Forms screen; hidden items already removed
 
-    if (!isset($programs[$key])) {
+    if (!$prog) {
         return '<p>MBS: unknown program "' . esc_html($key) . '".</p>';
     }
     if (!class_exists('WooCommerce')) {
         return '<p>MBS: WooCommerce is not active.</p>';
     }
-
-    $prog = $programs[$key];
 
     // Load the display + body webfonts the design uses (Anton / Barlow / Barlow Condensed /
     // JetBrains Mono). Without these a visitor's browser falls back to a system font whose
@@ -188,17 +204,17 @@ function mbs_shortcode($atts) {
 
     // Build the config the front-end renders from (single source of truth = PHP config above).
     $prog_js = $prog;
-    $prog_js['logoUrl'] = !empty($prog['logo']) ? MBS_SO_URL . 'assets/' . $prog['logo'] : '';
+    $prog_js['logoUrl'] = mbs_asset_url($prog['logo'] ?? '');
 
     // Turn each item's 'img' filename into a full URL the browser can load in the sample popup.
     if (!empty($prog_js['packages'])) {
         foreach ($prog_js['packages'] as $k => $pk) {
-            $prog_js['packages'][$k]['imgUrl'] = !empty($pk['img']) ? MBS_SO_URL . 'assets/' . $pk['img'] : '';
+            $prog_js['packages'][$k]['imgUrl'] = mbs_asset_url($pk['img'] ?? '');
         }
     }
     if (!empty($prog_js['addons'])) {
         foreach ($prog_js['addons'] as $i => $a) {
-            $prog_js['addons'][$i]['imgUrl'] = !empty($a['img']) ? MBS_SO_URL . 'assets/' . $a['img'] : '';
+            $prog_js['addons'][$i]['imgUrl'] = mbs_asset_url($a['img'] ?? '');
         }
     }
 
@@ -303,12 +319,11 @@ function mbs_ajax_add() {
         wp_send_json_error('Cart unavailable.');
     }
 
-    $programs = mbs_programs();
-    $key = sanitize_key($_POST['program'] ?? '');
-    if (!isset($programs[$key])) {
+    $key  = sanitize_key($_POST['program'] ?? '');
+    $prog = mbs_get_program($key);   // hidden packages/items are already stripped, so they can't be ordered
+    if (!$prog) {
         wp_send_json_error('Unknown program.');
     }
-    $prog = $programs[$key];
 
     $pkgKey = sanitize_text_field(wp_unslash($_POST['pkg'] ?? 'NONE'));
     $addons_in = json_decode(wp_unslash($_POST['addons'] ?? '{}'), true);
