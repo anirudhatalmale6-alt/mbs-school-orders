@@ -1,12 +1,12 @@
-=== MBS School Orders ===
-Private per-program sports photo order pages for WooCommerce.
+=== MBS Order Forms ===
+Private online order pages for WooCommerce — schools, clubs, studios and events.
 Built for Mark Nicholas Photography / Manhattan Beach Studios.
 
 == What it does ==
-Gives each school/team its own private online order page (like a paper order form,
-but online). Parents pick a package (A/B/C or none), add extras with quantities,
-enter athlete + parent details, and pay by card at checkout. Every order lands in
-WooCommerce > Orders with the full breakdown.
+Gives a school, club, studio or event its own private online order page (like a
+paper order form, but online). The customer picks a package (or none), adds extras
+with quantities, enters their details, and pays by card at checkout. Every order
+lands in WooCommerce > Orders with the full breakdown.
 
 == Requirements ==
 - WooCommerce active
@@ -16,7 +16,7 @@ WooCommerce > Orders with the full breakdown.
 
 == Install ==
 1. WordPress admin > Plugins > Add New > Upload Plugin.
-2. Choose mbs-school-orders.zip, Install, then Activate.
+2. Choose the plugin zip, Install, then Activate.
    (On activation it quietly creates one hidden product, "Sports Photo Order",
     that every order is billed through. You never need to touch it.)
 
@@ -25,33 +25,34 @@ WooCommerce > Orders with the full breakdown.
 2. WooCommerce > Settings > Tax > Standard rates > Insert row:
    Rate % = 9.5000  (Redondo). Name it "Sales Tax". Save.
 
-== Add or edit a school (no code) ==
-Everything about a school is edited in WooCommerce > School Order Forms.
+== Add or edit an order form (no code) ==
+Everything about an order form is edited in WooCommerce > Order Forms.
 
-To set up a new school the quick way:
-1. WooCommerce > School Order Forms.
-2. Find a school that's close to the new one and click Duplicate.
-3. Change the name, the shortcode key, the logo, the teams/divisions and any
-   prices that differ. Untick "Show" on anything this school doesn't sell.
+To set up a new one the quick way:
+1. WooCommerce > Order Forms.
+2. Find an existing form close to the new one and click Duplicate.
+3. Change the name, the shortcode key, the logo, the groups and any prices that
+   differ. Untick "Show" on anything this one doesn't sell. If it isn't a school,
+   set the Wording section (see below).
 4. Tick "Create the order page for me when I save", then Save.
 5. You get a published page with the shortcode already on it. That link is what
-   you send the school — it isn't in any menu, so nobody finds it by browsing.
+   you send out — it isn't in any menu, so nobody finds it by browsing.
 
 Notes:
 - Untick "Show" instead of deleting when a product is only paused. The item stays
   on file and past orders keep making sense.
-- Deleting a school leaves its WordPress page alone. Remove that from Pages
+- Deleting a form leaves its WordPress page alone. Remove that from Pages
   yourself if you want it gone.
 - Sample photos in the "See sample" popups are set up for you — send new ones over
   and they'll be dropped in.
 
-== Where the schools are stored ==
+== Where the order forms are stored ==
 In the database, edited through the screen above. includes/programs.php is only
-the starting data, copied in once when v1.1.0 is first activated. Editing that
+the starting data, copied in once when v1.1.0+ is first activated. Editing that
 file after that has no effect.
 
 == Logos ==
-On the school's edit screen, click "Choose from Media Library" and pick the logo.
+On the form's edit screen, click "Choose from Media Library" and pick the logo.
 A white or single-colour transparent PNG works best — it sits on the dark navy
 header. The included redondo-white.png is the Sea Hawks mark.
 
@@ -108,7 +109,7 @@ when the page is cached. A small version number shows at the bottom of the form.
 
 == Products link + clearer labels (1.0.13) ==
 - Optional "See photos & descriptions of every product" link at the top of the
-  form. Set it in the "Products link" box on the school's edit screen (already set
+  form. Set it in the "Products link" box on the form's edit screen (already set
   to www.marknicholasphotography.com/products for Redondo); leave it blank to hide it.
 - The cart's "back" link now reads "CLICK HERE to add another athlete".
 - The cart's checkout button now reads "Continue to Payment" so it's clear the
@@ -133,7 +134,7 @@ when the page is cached. A small version number shows at the bottom of the form.
   MBS_THUMB_VER and replace assets/order-thumb.png.
 
 == How to add products / change pricing ==
-All of it is on the school's edit screen in WooCommerce > School Order Forms.
+All of it is on the form's edit screen in WooCommerce > Order Forms.
 - Change a package price: edit the Price box on that package row.
 - Change an add-on price: edit the Price box on that item's row.
 - Add a new item: "+ Add an item", then set its group, name and price.
@@ -163,3 +164,30 @@ products link, packages and every add-on.
 - Renaming a school's shortcode key rewrites the shortcode on its existing page,
   so the page doesn't break.
 - Deleting a school leaves its WordPress page in place, on purpose.
+
+== Works for anything, not just schools (1.2.0) ==
+The plugin never cared that a "program" was a school — only the wording did. Each
+order form now sets its own wording on its edit screen, under Wording:
+- Who the order is for: Athlete / Participant / Dancer / Guest / Player…
+- Who is ordering: Parent / Customer / Contact…
+- Jersey number: switch it off entirely for anything that isn't a team sport.
+- Category dropdown label: Sport / Session / Class…
+- Intro paragraph: the sentence under the big heading. Leave blank for the
+  original sports wording. Wrap text in **stars** to make it bold.
+- Leave the Teams / divisions box empty and that dropdown disappears too.
+The order form re-labels itself from those — including the cart's "add another
+…" link. Everything else (cart, checkout, payment, exports) is identical.
+
+Forms that already existed keep the original wording exactly; the defaults are
+the old hard-coded words.
+
+== Existing pages are adopted, not duplicated (1.2.0) ==
+If you built a page by hand before this screen existed, the plugin now finds it
+by its shortcode and links it to the form, instead of offering to create a second
+copy of a page you already have.
+
+== Note on order records ==
+Order line items still record Athlete / Parent / Team as the field names, whatever
+the form calls them on screen. That is deliberate: the Manufacturing Export and
+every order you have already taken look those names up, and renaming them would
+break both. It only affects the admin-side labels, not what customers see.

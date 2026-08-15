@@ -75,7 +75,60 @@ function mbs_get_program($key) {
     return $p;
 }
 
-/** Blank program used by "Add New School". */
+/**
+ * Find a published page that already contains this form's shortcode.
+ *
+ * Pages created by hand before v1.1.0 (Redondo's, for one) aren't linked to a
+ * form record, so without this the edit screen would offer to "create the order
+ * page" and quietly produce a SECOND copy of a page that already exists.
+ */
+function mbs_find_page_for_key($key) {
+    global $wpdb;
+    if ($key === '' || empty($wpdb)) return 0;
+
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT ID, post_content FROM {$wpdb->posts}
+          WHERE post_type = 'page' AND post_status = 'publish' AND post_content LIKE %s
+          ORDER BY ID ASC LIMIT 100",
+        '%' . $wpdb->esc_like('[mbs_order_form') . '%'
+    ));
+    if (!$rows) return 0;
+
+    foreach ($rows as $row) {
+        if (!preg_match_all('/\[mbs_order_form([^\]]*)\]/', $row->post_content, $m)) continue;
+        foreach ($m[1] as $attrs) {
+            if (preg_match('/program\s*=\s*["\']?([a-z0-9_\-]+)/i', $attrs, $a)) {
+                if (strtolower($a[1]) === $key) return (int) $row->ID;
+            } elseif (trim($attrs) === '' && $key === 'redondo') {
+                // [mbs_order_form] with no attribute falls back to "redondo".
+                return (int) $row->ID;
+            }
+        }
+    }
+    return 0;
+}
+
+/**
+ * The page id for a form, adopting an existing page the first time we find one
+ * so the link sticks and we never offer to create a duplicate.
+ */
+function mbs_program_page_id($key, $prog) {
+    $page_id = isset($prog['page_id']) ? (int) $prog['page_id'] : 0;
+    if ($page_id && get_post_status($page_id) === 'publish') return $page_id;
+
+    $found = mbs_find_page_for_key($key);
+    if ($found) {
+        $all = mbs_get_programs();
+        if (isset($all[$key])) {
+            $all[$key]['page_id'] = $found;
+            mbs_save_programs($all);
+        }
+        return $found;
+    }
+    return 0;
+}
+
+/** Blank order form used by "Add New Order Form". */
 function mbs_program_defaults() {
     return array(
         'name'          => '',
@@ -89,6 +142,14 @@ function mbs_program_defaults() {
         'sports'        => array('Football'),
         'divisionLabel' => 'Team / Division',
         'divisions'     => array('Varsity', 'JV', 'Freshman'),
+        // Wording. Defaults keep the original sports-photo language, so every
+        // form that existed before v1.2.0 reads exactly as it always did.
+        'whoLabel'      => 'Athlete',
+        'buyerLabel'    => 'Parent',
+        'jerseyLabel'   => 'Jersey #',
+        'showJersey'    => 1,
+        'sportLabel'    => 'Sport',
+        'intro'         => '',
         'deadline'      => '',
         'productsUrl'   => '',
         'packages'      => array(),
@@ -169,8 +230,8 @@ function mbs_make_id($title, $taken) {
 add_action('admin_menu', function () {
     add_submenu_page(
         'woocommerce',
-        'School Order Forms',
-        'School Order Forms',
+        'Order Forms',
+        'Order Forms',
         'manage_woocommerce',
         'mbs-school-forms',
         'mbs_admin_router'
@@ -179,7 +240,7 @@ add_action('admin_menu', function () {
 
 function mbs_admin_router() {
     if (!current_user_can('manage_woocommerce')) {
-        wp_die('You do not have permission to manage school order forms.');
+        wp_die('You do not have permission to manage order forms.');
     }
     $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : 'list';
     if ($action === 'edit') {
@@ -196,27 +257,27 @@ function mbs_admin_list_screen() {
     $programs = mbs_get_programs();
     ?>
     <div class="wrap">
-        <h1 class="wp-heading-inline">School Order Forms</h1>
-        <a href="<?php echo esc_url(mbs_admin_url(array('action' => 'edit'))); ?>" class="page-title-action">Add New School</a>
+        <h1 class="wp-heading-inline">Order Forms</h1>
+        <a href="<?php echo esc_url(mbs_admin_url(array('action' => 'edit'))); ?>" class="page-title-action">Add New Order Form</a>
         <hr class="wp-header-end">
 
         <?php if (!empty($_GET['saved'])) : ?>
             <div class="notice notice-success is-dismissible"><p>Saved.</p></div>
         <?php endif; ?>
         <?php if (!empty($_GET['deleted'])) : ?>
-            <div class="notice notice-success is-dismissible"><p>School removed. Its order page was left on the site — delete it from Pages if you don't want it.</p></div>
+            <div class="notice notice-success is-dismissible"><p>Order form removed. Its page was left on the site — delete it from Pages if you don't want it.</p></div>
         <?php endif; ?>
 
         <p class="description" style="max-width:820px">
-            Each school here is one private order page. The quickest way to set up a new one is
-            <strong>Duplicate</strong> an existing school and change what's different — your product list
-            usually stays the same.
+            Each row here is one private order page — a school, a club, a studio, or a one-off event.
+            The quickest way to set up a new one is <strong>Duplicate</strong> an existing form and change
+            what's different; your product list usually stays the same.
         </p>
 
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <th style="width:26%">School</th>
+                    <th style="width:26%">Order form</th>
                     <th style="width:12%">Shortcode key</th>
                     <th style="width:10%">Packages</th>
                     <th style="width:10%">Add-ons</th>
@@ -226,12 +287,12 @@ function mbs_admin_list_screen() {
             </thead>
             <tbody>
             <?php if (empty($programs)) : ?>
-                <tr><td colspan="6">No schools yet. <a href="<?php echo esc_url(mbs_admin_url(array('action' => 'edit'))); ?>">Add your first one.</a></td></tr>
+                <tr><td colspan="6">No order forms yet. <a href="<?php echo esc_url(mbs_admin_url(array('action' => 'edit'))); ?>">Add your first one.</a></td></tr>
             <?php endif; ?>
             <?php foreach ($programs as $key => $p) :
                 $edit_url = mbs_admin_url(array('action' => 'edit', 'key' => $key));
-                $page_id  = isset($p['page_id']) ? (int) $p['page_id'] : 0;
-                $page_ok  = $page_id && get_post_status($page_id) === 'publish';
+                $page_id  = mbs_program_page_id($key, $p);
+                $page_ok  = $page_id > 0;
                 $dup_url  = wp_nonce_url(admin_url('admin-post.php?action=mbs_duplicate_program&key=' . rawurlencode($key)), 'mbs_dup_' . $key);
                 $del_url  = wp_nonce_url(admin_url('admin-post.php?action=mbs_delete_program&key=' . rawurlencode($key)), 'mbs_del_' . $key);
                 $n_pkg    = !empty($p['packages']) ? count(array_filter((array) $p['packages'], function ($x) { return empty($x['off']); })) : 0;
@@ -259,7 +320,7 @@ function mbs_admin_list_screen() {
                         <a href="<?php echo esc_url($dup_url); ?>">Duplicate</a>
                         &nbsp;·&nbsp;
                         <a href="<?php echo esc_url($del_url); ?>" style="color:#b32d2e"
-                           onclick="return confirm('Remove <?php echo esc_js($p['name'] !== '' ? $p['name'] : $key); ?>? The order page itself is left on the site.');">Delete</a>
+                           onclick="return confirm('Remove <?php echo esc_js($p['name'] !== '' ? $p['name'] : $key); ?>? The page itself is left on the site.');">Delete</a>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -278,8 +339,8 @@ function mbs_admin_edit_screen() {
     $is_new   = ($key === '' || !isset($programs[$key]));
     $p        = $is_new ? mbs_program_defaults() : array_merge(mbs_program_defaults(), $programs[$key]);
 
-    $page_id = (int) ($p['page_id'] ?? 0);
-    $page_ok = $page_id && get_post_status($page_id) === 'publish';
+    $page_id = $is_new ? 0 : mbs_program_page_id($key, $p);
+    $page_ok = $page_id > 0;
 
     // Existing add-on groups, offered as a datalist so groups stay consistent.
     $groups = array();
@@ -292,7 +353,7 @@ function mbs_admin_edit_screen() {
     wp_enqueue_media();
     ?>
     <div class="wrap">
-        <h1><?php echo $is_new ? 'Add New School' : 'Edit ' . esc_html($p['name'] !== '' ? $p['name'] : $key); ?></h1>
+        <h1><?php echo $is_new ? 'Add New Order Form' : 'Edit ' . esc_html($p['name'] !== '' ? $p['name'] : $key); ?></h1>
 
         <?php if (!empty($_GET['saved'])) : ?>
             <div class="notice notice-success is-dismissible"><p>
@@ -311,14 +372,14 @@ function mbs_admin_edit_screen() {
             <input type="hidden" name="orig_key" value="<?php echo esc_attr($is_new ? '' : $key); ?>">
             <?php wp_nonce_field('mbs_save_program'); ?>
 
-            <h2 class="title">The school</h2>
+            <h2 class="title">Name &amp; branding</h2>
             <table class="form-table" role="presentation">
                 <tr>
-                    <th scope="row"><label for="mbs_name">School / program name</label></th>
+                    <th scope="row"><label for="mbs_name">Name</label></th>
                     <td>
                         <input name="name" id="mbs_name" type="text" class="regular-text" required
                                value="<?php echo esc_attr($p['name']); ?>" placeholder="Redondo Union Sports 2026">
-                        <p class="description">Shown on order confirmations and in your exports.</p>
+                        <p class="description">A school, club, studio or event. Shown on order confirmations and in your exports.</p>
                     </td>
                 </tr>
                 <tr>
@@ -329,7 +390,7 @@ function mbs_admin_edit_screen() {
                         <p class="description">
                             Lower-case, no spaces. Used in the shortcode: <code>[mbs_order_form program="<span id="mbs_key_echo"><?php echo esc_html($is_new ? 'yourkey' : $key); ?></span>"]</code><br>
                             <?php if (!$is_new) : ?>
-                                <strong>Careful:</strong> changing this on a school that already has a live page will break that page
+                                <strong>Careful:</strong> changing this on a form that already has a live page will break that page
                                 until you update the shortcode on it.
                             <?php endif; ?>
                         </p>
@@ -375,13 +436,13 @@ function mbs_admin_edit_screen() {
                 </tr>
             </table>
 
-            <h2 class="title">Teams &amp; sports</h2>
+            <h2 class="title">Groups</h2>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><label for="mbs_sports">Sports</label></th>
                     <td>
                         <textarea name="sports" id="mbs_sports" rows="3" class="large-text code"><?php echo esc_textarea(mbs_array_to_lines($p['sports'])); ?></textarea>
-                        <p class="description">One per line. With a single sport the field is hidden on the form; with two or more, parents get a dropdown.</p>
+                        <p class="description">One per line — sports, class types, event sessions. With one entry the field is hidden; with two or more it becomes a dropdown.</p>
                     </td>
                 </tr>
                 <tr>
@@ -392,7 +453,55 @@ function mbs_admin_edit_screen() {
                     <th scope="row"><label for="mbs_divisions">Teams / divisions</label></th>
                     <td>
                         <textarea name="divisions" id="mbs_divisions" rows="5" class="large-text code"><?php echo esc_textarea(mbs_array_to_lines($p['divisions'])); ?></textarea>
-                        <p class="description">One per line — e.g. Varsity / JV / Freshman, or 10U / 11U / 12U Black.</p>
+                        <p class="description">One per line — e.g. Varsity / JV / Freshman, 10U / 11U, or Beginner / Advanced. Leave empty to remove this dropdown from the form.</p>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 class="title">Wording</h2>
+            <p class="description" style="max-width:820px">
+                This is what makes the same system work for a school, a dance studio, a club or a one-off event.
+                Change the words here and the order form re-labels itself.
+            </p>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="mbs_who">Who the order is for</label></th>
+                    <td>
+                        <input name="whoLabel" id="mbs_who" type="text" class="regular-text" value="<?php echo esc_attr($p['whoLabel']); ?>" placeholder="Athlete">
+                        <p class="description">Athlete, Participant, Dancer, Guest, Player… The form asks for "&lt;this&gt; First Name".</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_buyer">Who is ordering</label></th>
+                    <td>
+                        <input name="buyerLabel" id="mbs_buyer" type="text" class="regular-text" value="<?php echo esc_attr($p['buyerLabel']); ?>" placeholder="Parent">
+                        <p class="description">Parent, Customer, Contact…</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Jersey number</th>
+                    <td>
+                        <label><input type="checkbox" name="showJersey" value="1" <?php checked(!empty($p['showJersey'])); ?>> Ask for it</label>
+                        <input name="jerseyLabel" type="text" value="<?php echo esc_attr($p['jerseyLabel']); ?>" placeholder="Jersey #" style="margin-left:14px;max-width:200px">
+                        <p class="description">Untick for anything that isn't a team sport. The field disappears from the form.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_sportlabel">Category dropdown</label></th>
+                    <td>
+                        <input name="sportLabel" id="mbs_sportlabel" type="text" class="regular-text" value="<?php echo esc_attr($p['sportLabel']); ?>" placeholder="Sport">
+                        <p class="description">The label above the Sports list higher up. Only shows when you list two or more.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_intro">Intro paragraph</label></th>
+                    <td>
+                        <textarea name="intro" id="mbs_intro" rows="3" class="large-text"><?php echo esc_textarea(mbs_inc_to_editor($p['intro'])); ?></textarea>
+                        <p class="description">
+                            The sentence under the big heading. Leave blank for the default:
+                            "Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely."
+                            The deadline line, if you set one, is added after it automatically.
+                        </p>
                     </td>
                 </tr>
             </table>
@@ -502,7 +611,7 @@ function mbs_admin_edit_screen() {
             </table>
 
             <p class="submit">
-                <button type="submit" class="button button-primary button-hero">Save school</button>
+                <button type="submit" class="button button-primary button-hero">Save order form</button>
                 <a href="<?php echo esc_url(mbs_admin_url()); ?>" class="button" style="margin-left:8px">Cancel</a>
             </p>
         </form>
@@ -638,10 +747,10 @@ function mbs_handle_save_program() {
     $key      = isset($_POST['key']) ? sanitize_key(wp_unslash($_POST['key'])) : '';
     $name     = sanitize_text_field(wp_unslash($_POST['name'] ?? ''));
 
-    if ($key === '')  mbs_save_redirect($orig_key, 'Please give the school a shortcode key.');
-    if ($name === '') mbs_save_redirect($orig_key, 'Please give the school a name.');
+    if ($key === '')  mbs_save_redirect($orig_key, 'Please give the order form a shortcode key.');
+    if ($name === '') mbs_save_redirect($orig_key, 'Please give the order form a name.');
     if ($key !== $orig_key && isset($programs[$key])) {
-        mbs_save_redirect($orig_key, 'The key "' . $key . '" is already used by another school. Pick a different one.');
+        mbs_save_redirect($orig_key, 'The key "' . $key . '" is already used by another order form. Pick a different one.');
     }
 
     // Start from whatever we already had, so nothing we don't show on this
@@ -660,6 +769,12 @@ function mbs_handle_save_program() {
     $prog['deadline']      = sanitize_text_field(wp_unslash($_POST['deadline'] ?? ''));
     $prog['productsUrl']   = esc_url_raw(wp_unslash($_POST['productsUrl'] ?? ''));
     $prog['sports']        = mbs_lines_to_array(wp_unslash($_POST['sports'] ?? ''));
+    $prog['whoLabel']      = sanitize_text_field(wp_unslash($_POST['whoLabel'] ?? '')) ?: 'Athlete';
+    $prog['buyerLabel']    = sanitize_text_field(wp_unslash($_POST['buyerLabel'] ?? '')) ?: 'Parent';
+    $prog['jerseyLabel']   = sanitize_text_field(wp_unslash($_POST['jerseyLabel'] ?? '')) ?: 'Jersey #';
+    $prog['sportLabel']    = sanitize_text_field(wp_unslash($_POST['sportLabel'] ?? '')) ?: 'Sport';
+    $prog['showJersey']    = empty($_POST['showJersey']) ? 0 : 1;
+    $prog['intro']         = mbs_inc_from_editor(wp_unslash($_POST['intro'] ?? ''));
     $prog['divisions']     = mbs_lines_to_array(wp_unslash($_POST['divisions'] ?? ''));
 
     // Logo: a media-library URL, or a filename shipped in /assets.
@@ -714,8 +829,11 @@ function mbs_handle_save_program() {
     $prog['addons'] = $addons;
 
     /* ---- the order page ---- */
-    $page_id = (int) ($prog['page_id'] ?? 0);
-    $page_ok = $page_id && get_post_status($page_id) === 'publish';
+    // Look for a page that already carries this shortcode before offering to make one.
+    $page_id = $orig_key !== '' ? mbs_program_page_id($orig_key, $prog) : 0;
+    if (!$page_id) $page_id = mbs_find_page_for_key($key);
+    if ($page_id) $prog['page_id'] = $page_id;
+    $page_ok = $page_id > 0;
     if (!$page_ok && !empty($_POST['create_page'])) {
         $new_id = wp_insert_post(array(
             'post_title'     => $name,
@@ -765,7 +883,7 @@ add_action('admin_post_mbs_duplicate_program', function () {
     check_admin_referer('mbs_dup_' . $key);
 
     $programs = mbs_get_programs();
-    if (!isset($programs[$key])) wp_die('That school no longer exists.');
+    if (!isset($programs[$key])) wp_die('That order form no longer exists.');
 
     $copy = $programs[$key];
     $copy['page_id'] = 0;                       // the copy needs its own page

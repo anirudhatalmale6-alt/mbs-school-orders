@@ -47,23 +47,59 @@
     $('crestMas').textContent = P.crestMascot || '';
     $('mascotLine').textContent = P.mascot || '';
     $('progTitle').innerHTML = (P.line1 || '') + '<br>' + (P.line2 || '') + ' <span class="yr">' + (P.year || '') + '</span>';
-    if (P.deadline) $('progSub').innerHTML = 'Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely. Deadline to order: <b>' + P.deadline + '</b>.';
+
+    // Intro paragraph. The order form is used for schools, clubs and one-off
+    // events, so the wording is set per form rather than hard-coded here.
+    var intro = P.intro || 'Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely.';
+    if (P.deadline) intro += ' Deadline to order: <b>' + P.deadline + '</b>.';
+    $('progSub').innerHTML = intro;
     if (P.productsUrl) { $('progProductsLink').href = P.productsUrl; $('progProducts').style.display = 'block'; }
 
-    // divisions
-    $('divLabel').innerHTML = (P.divisionLabel || 'Team / Division') + ' <span class="req">*</span>';
-    $('fDivision').innerHTML = (P.divisions || []).map(function (d) { return '<option>' + d + '</option>'; }).join('');
+    /* ---- who the order is FOR, and who is BUYING ---- */
+    var who = P.whoLabel || 'Athlete', buyer = P.buyerLabel || 'Parent';
+    var req = ' <span class="req">*</span>';
+    $('secWho').textContent = who + ' & ' + buyer;
+    $('labWhoFirst').innerHTML = who + ' First Name' + req;
+    $('labWhoLast').innerHTML = who + ' Last Name' + req;
+    $('labBuyerFirst').innerHTML = buyer + ' First Name' + req;
+    $('labBuyerLast').innerHTML = buyer + ' Last Name' + req;
 
-    // sport (only if >1)
+    /* ---- the middle row: jersey / category / group. Any of the three can be
+           switched off, so the column count is worked out from what's left. ---- */
+    // PHP stores this as 1/0, which arrives as a NUMBER — so `!== false` would be
+    // true even when it's off. Undefined means a form saved before this option
+    // existed, which should keep asking for the jersey number.
+    var showJersey = (typeof P.showJersey === 'undefined') ? true : !!Number(P.showJersey);
+    $('jerseyField').style.display = showJersey ? 'block' : 'none';
+    $('labJersey').textContent = P.jerseyLabel || 'Jersey #';
+
+    var divisions = P.divisions || [];
+    var showDiv = divisions.length > 0;
+    $('divisionField').style.display = showDiv ? 'block' : 'none';
+    $('divLabel').innerHTML = (P.divisionLabel || 'Team / Division') + req;
+    $('fDivision').innerHTML = divisions.map(function (d) { return '<option>' + d + '</option>'; }).join('');
+
     var multi = P.sports && P.sports.length > 1;
+    $('labSport').textContent = P.sportLabel || 'Sport';
     if (multi) {
       $('fSport').innerHTML = P.sports.map(function (s) { return '<option>' + s + '</option>'; }).join('');
       $('sportField').style.display = 'block';
-      $('teamRow').className = 'grid3';
     } else {
       $('sportField').style.display = 'none';
-      $('teamRow').className = 'grid2';
     }
+
+    var shown = (showJersey ? 1 : 0) + (multi ? 1 : 0) + (showDiv ? 1 : 0);
+    $('teamRow').style.display = shown ? '' : 'none';
+    $('teamRow').className = shown >= 3 ? 'grid3' : (shown === 2 ? 'grid2' : 'grid1');
+
+    /* ---- the remaining places the word "athlete" appears to a customer ---- */
+    var lw = who.toLowerCase(), lb = buyer.toLowerCase();
+    $('stepWho').innerHTML = 'Enter the ' + lw + ' &amp; ' + lb + ' details';
+    $('liveTitle').textContent = 'This ' + who + "'s Order";
+    $('mbsAddAnother').innerHTML = '\uFF0B Add another ' + lw;
+    $('multiHint').textContent = 'Order multiple ' + lw + 's in one cart';
+    $('addedHint').textContent = 'You can review or change this order any time from your cart. '
+      + 'Most people just head to checkout \u2014 only add another ' + lw + ' if you have more than one.';
 
     // packages dropdown
     var opts = '';
@@ -154,7 +190,11 @@
     if (!ph) miss.push('fPhone'); if (!em) miss.push('fEmail');
     reqFields.forEach(function (id) { $(id).style.borderColor = ''; });
     miss.forEach(function (id) { $(id).style.borderColor = 'var(--scarlet)'; });
-    if (miss.length) { $(miss[0]).focus(); toast('Please fill in athlete, parent, phone and email'); return; }
+    if (miss.length) {
+      $(miss[0]).focus();
+      toast('Please fill in ' + (P.whoLabel || 'athlete').toLowerCase() + ', ' + (P.buyerLabel || 'parent').toLowerCase() + ', phone and email');
+      return;
+    }
     if (ph.replace(/\D/g, '').length !== 10) { $('fPhone').style.borderColor = 'var(--scarlet)'; $('fPhone').focus(); toast('Please enter a 10-digit phone number'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { $('fEmail').style.borderColor = 'var(--scarlet)'; $('fEmail').focus(); toast('Please enter a valid email address'); return; }
 
@@ -262,7 +302,7 @@
       }
     });
     if (qty['buddy'] > 0 && $('buddyWrap')) { $('buddyWrap').style.display = 'block'; if (f.buddy != null && $('fBuddy')) $('fBuddy').value = f.buddy; }
-    $('mbsAddBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Update This Athlete · <span id="addPrice">' + money(orderTotal()) + '</span>';
+    $('mbsAddBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Update This ' + (P.whoLabel || 'Athlete') + ' · <span id="addPrice">' + money(orderTotal()) + '</span>';
   }
 
   /* ---------- wire events ---------- */

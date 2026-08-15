@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: MBS School Orders
- * Description: Private per-program sports photo order forms for WooCommerce (Mark Nicholas Photography / Manhattan Beach Studios). Use the shortcode [mbs_order_form program="redondo"] on a private page.
- * Version:     1.1.0
+ * Plugin Name: MBS Order Forms
+ * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
+ * Version:     1.2.0
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.1.0');
+define('MBS_SO_VER', '1.2.0');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -41,7 +41,7 @@ function mbs_asset_url($v) {
 add_action('admin_init', function () {
     if (!class_exists('WooCommerce')) {
         add_action('admin_notices', function () {
-            echo '<div class="notice notice-error"><p><strong>MBS School Orders</strong> needs WooCommerce active to work.</p></div>';
+            echo '<div class="notice notice-error"><p><strong>MBS Order Forms</strong> needs WooCommerce active to work.</p></div>';
         });
     }
 });
@@ -407,6 +407,7 @@ function mbs_ajax_add() {
         'email'    => $email,
         'buddy'    => $buddy,
         'notes'    => $notes,
+        'pkey'     => $key,         // which order form this came from (for cart wording)
         'pkg'      => $pkgKey,      // raw selection, for editing later
         'addons'   => $addon_qty,   // raw id => qty, for editing later
         'lines'    => array_map('sanitize_text_field', $lines),
@@ -445,6 +446,30 @@ function mbs_ajax_add() {
         'total'   => wc_price($meta['total']),
         'edit'    => $is_edit,
     ));
+}
+
+/**
+ * The word a given order form uses for the person an order is for ("Athlete" by
+ * default, but a dance studio or an event may call them something else). Cart
+ * lines saved before v1.2.0 have no form key, so they keep the original wording.
+ */
+function mbs_who_label($cart_item, $lower = false) {
+    $label = 'Athlete';
+    if (!empty($cart_item['mbs']['pkey'])) {
+        $prog = mbs_get_program($cart_item['mbs']['pkey']);
+        if ($prog && !empty($prog['whoLabel'])) $label = $prog['whoLabel'];
+    }
+    return $lower ? strtolower($label) : $label;
+}
+
+/** The same word, taken from whichever photo-order line is first in the cart. */
+function mbs_cart_who_label($lower = false) {
+    if (function_exists('WC') && !is_null(WC()->cart)) {
+        foreach (WC()->cart->get_cart() as $item) {
+            if (!empty($item['mbs'])) return mbs_who_label($item, $lower);
+        }
+    }
+    return $lower ? 'athlete' : 'Athlete';
 }
 
 /* -------------------------------------------------------------------------
@@ -507,7 +532,7 @@ function mbs_cart_item_name($name, $cart_item, $cart_item_key) {
         $form_url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
         if ($form_url) {
             $edit = add_query_arg('mbs_edit', $cart_item_key, $form_url);
-            $label .= '<br><a href="' . esc_url($edit) . '" class="mbs-edit-link" style="display:inline-block;margin-top:7px;padding:6px 14px;border:1.5px solid #0b1f3a;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;color:#0b1f3a">&#9998; Edit this athlete</a>';
+            $label .= '<br><a href="' . esc_url($edit) . '" class="mbs-edit-link" style="display:inline-block;margin-top:7px;padding:6px 14px;border:1.5px solid #0b1f3a;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;color:#0b1f3a">&#9998; Edit this ' . esc_html(mbs_who_label($cart_item, true)) . '</a>';
         }
     }
     return $label;
@@ -655,7 +680,7 @@ function mbs_back_to_form_link() {
     if (!mbs_cart_has_order()) return;
     $url = (function_exists('WC') && WC()->session) ? WC()->session->get('mbs_form_url') : '';
     if (!$url) return;
-    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; CLICK HERE to add another athlete</a></p>';
+    echo '<p class="mbs-back-link" style="margin:0 0 18px;font-size:15px"><a href="' . esc_url($url) . '">&larr; CLICK HERE to add another ' . esc_html(mbs_cart_who_label(true)) . '</a></p>';
 }
 
 // 8) Lock our photo-order line to quantity 1. Each athlete is its own line and the

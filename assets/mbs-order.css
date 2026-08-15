@@ -70,6 +70,7 @@ label.fld .lab{font-family:'Barlow Condensed',sans-serif;text-transform:uppercas
 .inp,select.inp{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;font-size:15.5px;font-family:'Barlow',sans-serif;background:var(--paper);color:var(--ink);transition:.15s}
 .inp:focus,select.inp:focus{outline:none;border-color:var(--navy);background:#fff;box-shadow:0 0 0 4px rgba(11,31,58,.09)}
 textarea.inp{min-height:62px;resize:vertical;line-height:1.45}
+.grid1{display:grid;grid-template-columns:1fr;gap:14px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 

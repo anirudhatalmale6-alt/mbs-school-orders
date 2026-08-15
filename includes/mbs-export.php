@@ -23,8 +23,8 @@ add_action('admin_menu', 'mbs_export_menu', 99);
 function mbs_export_menu() {
     add_submenu_page(
         'woocommerce',
-        'School Orders — Manufacturing Export',
-        'School Orders Export',
+        'Order Forms — Manufacturing Export',
+        'Order Export',
         'manage_woocommerce',
         'mbs-school-export',
         'mbs_export_page'

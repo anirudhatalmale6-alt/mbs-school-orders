@@ -26,7 +26,7 @@
         <div class="mh-card">
           <h4>How ordering works</h4>
           <ol>
-            <li>Enter the athlete &amp; parent details</li>
+            <li id="stepWho">Enter the athlete &amp; parent details</li>
             <li>Choose a package (or none) &amp; add extras</li>
             <li>Pay securely by card — done</li>
           </ol>
@@ -40,24 +40,24 @@
       <div>
 
         <div class="panel">
-          <div class="panel-h"><span class="n">1</span><h3>Athlete &amp; Parent</h3></div>
+          <div class="panel-h"><span class="n">1</span><h3 id="secWho">Athlete &amp; Parent</h3></div>
           <div class="panel-b">
             <div class="grid2">
-              <label class="fld"><span class="lab">Athlete First Name <span class="req">*</span></span><input class="inp" id="fAthFirst" placeholder="Jordan"></label>
-              <label class="fld"><span class="lab">Athlete Last Name <span class="req">*</span></span><input class="inp" id="fAthLast" placeholder="Reyes"></label>
+              <label class="fld"><span class="lab" id="labWhoFirst">Athlete First Name <span class="req">*</span></span><input class="inp" id="fAthFirst" placeholder="Jordan"></label>
+              <label class="fld"><span class="lab" id="labWhoLast">Athlete Last Name <span class="req">*</span></span><input class="inp" id="fAthLast" placeholder="Reyes"></label>
             </div>
             <div class="grid2" id="teamRow">
-              <label class="fld"><span class="lab">Jersey #</span><input class="inp" id="fJersey" placeholder="24"></label>
-              <label class="fld" id="sportField" style="display:none"><span class="lab">Sport</span><select class="inp" id="fSport"></select></label>
-              <label class="fld"><span class="lab" id="divLabel">Team / Division <span class="req">*</span></span><select class="inp" id="fDivision"></select></label>
+              <label class="fld" id="jerseyField"><span class="lab" id="labJersey">Jersey #</span><input class="inp" id="fJersey" placeholder="24"></label>
+              <label class="fld" id="sportField" style="display:none"><span class="lab" id="labSport">Sport</span><select class="inp" id="fSport"></select></label>
+              <label class="fld" id="divisionField"><span class="lab" id="divLabel">Team / Division <span class="req">*</span></span><select class="inp" id="fDivision"></select></label>
             </div>
             <div class="grid2">
-              <label class="fld"><span class="lab">Parent First Name <span class="req">*</span></span><input class="inp" id="fParFirst" placeholder="Alex"></label>
-              <label class="fld"><span class="lab">Parent Last Name <span class="req">*</span></span><input class="inp" id="fParLast" placeholder="Reyes"></label>
+              <label class="fld"><span class="lab" id="labBuyerFirst">Parent First Name <span class="req">*</span></span><input class="inp" id="fParFirst" placeholder="Alex"></label>
+              <label class="fld"><span class="lab" id="labBuyerLast">Parent Last Name <span class="req">*</span></span><input class="inp" id="fParLast" placeholder="Reyes"></label>
             </div>
             <div class="grid2">
               <label class="fld"><span class="lab">Phone <span class="req">*</span></span><input class="inp" id="fPhone" type="tel" inputmode="tel" maxlength="20" placeholder="(310) 555-1234"></label>
-              <label class="fld"><span class="lab">Email (for receipt) <span class="req">*</span></span><input class="inp" id="fEmail" type="email" inputmode="email" placeholder="parent@email.com"></label>
+              <label class="fld"><span class="lab">Email (for receipt) <span class="req">*</span></span><input class="inp" id="fEmail" type="email" inputmode="email" placeholder="you@email.com"></label>
             </div>
             <label class="fld"><span class="lab">Notes / special requests <span style="color:var(--muted);font-weight:400">(optional)</span></span><textarea class="inp" id="fNotes" rows="2" maxlength="500" placeholder="Anything we should know? e.g. spelling of a name, sibling on another team…"></textarea></label>
           </div>
@@ -86,7 +86,7 @@
 
         <div id="mbsAdded" style="display:none;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)">
           <div style="display:flex;align-items:center;gap:10px;font-weight:700;color:var(--ok);font-size:16px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--ok)" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg><span id="mbsAddedMsg">Added to cart</span></div>
-          <p style="color:var(--muted);font-size:14px;margin:8px 0 14px">You can review or change this order any time from your cart. Most families just head to checkout — only add another athlete if you have more than one.</p>
+          <p id="addedHint" style="color:var(--muted);font-size:14px;margin:8px 0 14px">You can review or change this order any time from your cart. Most families just head to checkout — only add another athlete if you have more than one.</p>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <a class="btn btn-primary" id="mbsCheckout" href="<?php echo esc_url(wc_get_cart_url()); ?>">Go to cart &amp; checkout →</a>
             <button class="btn btn-ghost" id="mbsAddAnother" type="button">＋ Add another athlete</button>
@@ -97,13 +97,13 @@
 
       <aside class="summary">
         <div class="sum-live">
-          <h4>This Athlete's Order</h4>
+          <h4 id="liveTitle">This Athlete's Order</h4>
           <div id="liveLines"></div>
           <div class="sum-total"><span class="l">Subtotal</span><span class="v" id="liveTotal">$0</span></div>
           <div class="trust">
             <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Secure encrypted card checkout</div>
             <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Priced per item — never per day</div>
-            <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg>Order multiple athletes in one cart</div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.4 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.4h7.6z"/></svg><span id="multiHint">Order multiple athletes in one cart</span></div>
           </div>
         </div>
       </aside>
