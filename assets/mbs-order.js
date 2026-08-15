@@ -59,11 +59,12 @@
     /* ---- who the order is FOR, and who is BUYING ---- */
     var who = P.whoLabel || 'Athlete', buyer = P.buyerLabel || 'Parent';
     var req = ' <span class="req">*</span>';
-    $('secWho').textContent = who + ' & ' + buyer;
-    $('labWhoFirst').innerHTML = who + ' First Name' + req;
-    $('labWhoLast').innerHTML = who + ' Last Name' + req;
+    // "Athlete First Name" reads well; "Name First Name" does not.
+    var genericWho = /^(name|your name|full name)$/i.test(who);
+    $('labWhoFirst').innerHTML = (genericWho ? 'First Name' : who + ' First Name') + req;
+    $('labWhoLast').innerHTML  = (genericWho ? 'Last Name'  : who + ' Last Name') + req;
     $('labBuyerFirst').innerHTML = buyer + ' First Name' + req;
-    $('labBuyerLast').innerHTML = buyer + ' Last Name' + req;
+    $('labBuyerLast').innerHTML  = buyer + ' Last Name' + req;
 
     /* ---- which blocks this form asks for at all ----
        An art-fair form may want nothing but a name, so each block can be
@@ -128,7 +129,9 @@
 
     /* ---- the remaining places the word "athlete" appears to a customer ---- */
     var lw = who.toLowerCase(), lb = buyer.toLowerCase();
-    $('stepWho').innerHTML = 'Enter the ' + lw + ' &amp; ' + lb + ' details';
+    $('stepWho').innerHTML = 'Enter the '
+      + (SHOW_WHO && SHOW_BUYER ? (lw + ' &amp; ' + lb) : (SHOW_WHO ? lw : lb))
+      + ' details';
     // "This Athlete's Order" reads fine; "This Name's Order" does not. When the
     // form calls the person a generic thing, drop the possessive.
     var generic = /^(name|your name|full name|customer|buyer)$/i.test(who);

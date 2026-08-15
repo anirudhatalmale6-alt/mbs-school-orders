@@ -87,6 +87,11 @@ function mbs_program_css($prog) {
     // Rebuild the masthead gradient from whichever colours were given.
     $grad_bg  = $bg !== '' ? $bg : '#0b1f3a';
     $grad_acc = $accent !== '' ? mbs_rgb($accent) : '216,30,44';
+    // The initials crest is its own hard-coded gradient, so it needs repainting
+    // as well or it sits on the new header looking like it belongs to another site.
+    if ($bg !== '') {
+        $css .= '.mbs-app .crest{background:linear-gradient(160deg,' . mbs_shade($bg, 1.35) . ',' . $bg . ')}';
+    }
     $css .= '.mbs-app header.masthead{background-color:' . $grad_bg . ';'
           . 'background:radial-gradient(120% 140% at 85% -20%, rgba(' . $grad_acc . ',.35) 0%, transparent 55%),'
           . 'radial-gradient(90% 120% at 0% 120%, rgba(230,179,74,.18) 0%, transparent 50%),'
