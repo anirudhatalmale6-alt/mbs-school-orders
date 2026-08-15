@@ -131,6 +131,23 @@ function mbs_clean_tag($tag) {
     return substr($tag, 0, 6);
 }
 
+/**
+ * The package "what's included" text is rendered as HTML on the order form, and
+ * one of the original packages uses <b> to highlight "Digital File included".
+ * Showing raw tags in an admin text box looks broken, so bold is presented as
+ * **stars** on the way in and converted back on the way out. Everything else is
+ * shown as the real character (× rather than &times;).
+ */
+function mbs_inc_to_editor($html) {
+    $s = html_entity_decode((string) $html, ENT_QUOTES, 'UTF-8');
+    $s = preg_replace('#</?(?:b|strong)>#i', '**', $s);
+    return $s;
+}
+function mbs_inc_from_editor($text) {
+    $s = preg_replace('/\*\*(.+?)\*\*/s', '<b>$1</b>', (string) $text);
+    return wp_kses($s, array('b' => array(), 'strong' => array(), 'em' => array(), 'i' => array(), 'br' => array()));
+}
+
 /** Turn an item title into a stable id when one isn't supplied. */
 function mbs_make_id($title, $taken) {
     $base = sanitize_key(str_replace(array('×', '&times;'), 'x', (string) $title));
@@ -399,7 +416,10 @@ function mbs_admin_edit_screen() {
             </table>
 
             <h2 class="title">Packages</h2>
-            <p class="description">Untick <em>Show</em> to hide a package without deleting it. Parents can always choose "no package" and order individual items.</p>
+            <p class="description">
+                Untick <em>Show</em> to hide a package without deleting it. Parents can always choose "no package" and order individual items.
+                In <em>What's included</em>, put <code>**stars around text**</code> to make it bold on the order form.
+            </p>
             <table class="widefat striped" id="mbs-pkgs">
                 <thead>
                     <tr>
@@ -556,9 +576,7 @@ function mbs_pkg_row_html($i, $tag, $pk) {
         <td><input type="text" name="packages[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($pk['name']); ?>" style="width:100%" placeholder="Package A"></td>
         <td><input type="number" step="0.01" min="0" name="packages[<?php echo esc_attr($i); ?>][price]" value="<?php echo esc_attr($pk['price']); ?>" style="width:100%"></td>
         <td>
-            <?php // Stored text may contain entities like &times; from the original config —
-                  // show them as real characters so the field reads normally. ?>
-            <input type="text" name="packages[<?php echo esc_attr($i); ?>][inc]" value="<?php echo esc_attr(html_entity_decode((string) $pk['inc'], ENT_QUOTES, 'UTF-8')); ?>" style="width:100%" placeholder="2 × 5×7 prints · 8 wallets">
+            <input type="text" name="packages[<?php echo esc_attr($i); ?>][inc]" value="<?php echo esc_attr(mbs_inc_to_editor($pk['inc'])); ?>" style="width:100%" placeholder="2 × 5×7 prints · 8 wallets">
             <input type="hidden" name="packages[<?php echo esc_attr($i); ?>][img]" value="<?php echo esc_attr($pk['img']); ?>">
         </td>
         <td style="text-align:center">
@@ -664,8 +682,7 @@ function mbs_handle_save_program() {
             'name'  => $pname !== '' ? $pname : ('Package ' . $tag),
             'tag'   => $tag,
             'price' => round((float) ($row['price'] ?? 0), 2),
-            // Allows the small amount of markup these strings already use.
-            'inc'   => wp_kses(wp_unslash($row['inc'] ?? ''), array('b' => array(), 'strong' => array(), 'em' => array(), 'i' => array(), 'br' => array())),
+            'inc'   => mbs_inc_from_editor(wp_unslash($row['inc'] ?? '')),
             'img'   => sanitize_text_field(wp_unslash($row['img'] ?? '')),
             'off'   => empty($row['on']) ? 1 : 0,
         );
