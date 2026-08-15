@@ -191,3 +191,36 @@ Order line items still record Athlete / Parent / Team as the field names, whatev
 the form calls them on screen. That is deliberate: the Manufacturing Export and
 every order you have already taken look those names up, and renaming them would
 break both. It only affects the admin-side labels, not what customers see.
+
+== Ask for as little as you like (1.3.0) ==
+Under "Which fields to ask for" on any form:
+- The person's name block: on or off.
+- The buyer's name block: on or off. (Keep at least one — an order needs a name.)
+- Phone: Required / Optional / Don't ask.
+- Email: Required / Optional / Don't ask.
+- Notes box: on or off.
+Selling prints at an art fair? Switch it all off except one name and you get a
+single Name box and the products, nothing else. A form with no packages hides the
+whole "Choose a Package" step and renumbers itself.
+
+The checks are enforced on the server as well as in the browser, so a form that
+doesn't ask for a phone number can't be made to demand one, and a form that does
+still can't be bypassed.
+
+The payment page still collects a name and email — that belongs to the card
+processor and isn't something this plugin can remove.
+
+== Colours (1.3.0) ==
+Two pickers per form: Header background and Accent. The accent drives the year in
+the heading, the buttons and the required stars. Leave both blank for the standard
+navy and scarlet. Only real hex colours are accepted, and everything generated is
+scoped to the order form, so nothing can leak into the rest of your site.
+
+== Paper order form (1.3.0) ==
+Attach a PDF from your media library and a "Download the paper order form" button
+appears near the top, with wording you can change. Leave it blank and no button
+shows.
+
+== Product photos from the screen (1.3.0) ==
+Every package and item row now has Choose / Remove for its sample photo, straight
+from the media library. The photos already set up stay exactly as they are.

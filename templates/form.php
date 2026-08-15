@@ -20,6 +20,7 @@
             <div class="eyebrow" id="mascotLine">Athletics</div>
             <h1 class="title" id="progTitle">Program</h1>
             <p class="subhead" id="progSub">Official team &amp; individual sports photos. Pick a package, add any extras, and check out securely.</p>
+            <p class="prodlink" id="progPdf" style="display:none;margin:8px 0 0;font-size:15px">&#128196; <a id="progPdfLink" href="#" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-weight:600">Download the paper order form (PDF)</a></p>
             <p class="prodlink" id="progProducts" style="display:none;margin:8px 0 0;font-size:15px">&#128247; <a id="progProductsLink" href="#" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline;font-weight:600">See photos &amp; descriptions of every product &rarr;</a></p>
           </div>
         </div>
@@ -27,7 +28,7 @@
           <h4>How ordering works</h4>
           <ol>
             <li id="stepWho">Enter the athlete &amp; parent details</li>
-            <li>Choose a package (or none) &amp; add extras</li>
+            <li id="stepPick">Choose a package (or none) &amp; add extras</li>
             <li>Pay securely by card — done</li>
           </ol>
         </div>
@@ -42,7 +43,7 @@
         <div class="panel">
           <div class="panel-h"><span class="n">1</span><h3 id="secWho">Athlete &amp; Parent</h3></div>
           <div class="panel-b">
-            <div class="grid2">
+            <div class="grid2" id="whoRow">
               <label class="fld"><span class="lab" id="labWhoFirst">Athlete First Name <span class="req">*</span></span><input class="inp" id="fAthFirst" placeholder="Jordan"></label>
               <label class="fld"><span class="lab" id="labWhoLast">Athlete Last Name <span class="req">*</span></span><input class="inp" id="fAthLast" placeholder="Reyes"></label>
             </div>
@@ -51,20 +52,20 @@
               <label class="fld" id="sportField" style="display:none"><span class="lab" id="labSport">Sport</span><select class="inp" id="fSport"></select></label>
               <label class="fld" id="divisionField"><span class="lab" id="divLabel">Team / Division <span class="req">*</span></span><select class="inp" id="fDivision"></select></label>
             </div>
-            <div class="grid2">
+            <div class="grid2" id="buyerRow">
               <label class="fld"><span class="lab" id="labBuyerFirst">Parent First Name <span class="req">*</span></span><input class="inp" id="fParFirst" placeholder="Alex"></label>
               <label class="fld"><span class="lab" id="labBuyerLast">Parent Last Name <span class="req">*</span></span><input class="inp" id="fParLast" placeholder="Reyes"></label>
             </div>
-            <div class="grid2">
-              <label class="fld"><span class="lab">Phone <span class="req">*</span></span><input class="inp" id="fPhone" type="tel" inputmode="tel" maxlength="20" placeholder="(310) 555-1234"></label>
-              <label class="fld"><span class="lab">Email (for receipt) <span class="req">*</span></span><input class="inp" id="fEmail" type="email" inputmode="email" placeholder="you@email.com"></label>
+            <div class="grid2" id="contactRow">
+              <label class="fld" id="phoneField"><span class="lab" id="labPhone">Phone <span class="req">*</span></span><input class="inp" id="fPhone" type="tel" inputmode="tel" maxlength="20" placeholder="(310) 555-1234"></label>
+              <label class="fld" id="emailField"><span class="lab" id="labEmail">Email (for receipt) <span class="req">*</span></span><input class="inp" id="fEmail" type="email" inputmode="email" placeholder="you@email.com"></label>
             </div>
-            <label class="fld"><span class="lab">Notes / special requests <span style="color:var(--muted);font-weight:400">(optional)</span></span><textarea class="inp" id="fNotes" rows="2" maxlength="500" placeholder="Anything we should know? e.g. spelling of a name, sibling on another team…"></textarea></label>
+            <label class="fld" id="notesField"><span class="lab">Notes / special requests <span style="color:var(--muted);font-weight:400">(optional)</span></span><textarea class="inp" id="fNotes" rows="2" maxlength="500" placeholder="Anything we should know? e.g. spelling of a name, sibling on another team…"></textarea></label>
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-h"><span class="n">2</span><h3>Choose a Package</h3><span class="hint">A, B, C — or none</span></div>
+        <div class="panel" id="pkgPanel">
+          <div class="panel-h"><span class="n" id="pkgPanelNum">2</span><h3>Choose a Package</h3><span class="hint">A, B, C — or none</span></div>
           <div class="panel-b">
             <label class="fld pkg-select" style="margin-bottom:0">
               <select class="inp big" id="fPkg"></select>
@@ -75,7 +76,7 @@
         </div>
 
         <div class="panel">
-          <div class="panel-h"><span class="n">3</span><h3>Add Extras</h3><span class="hint">optional · set a quantity</span></div>
+          <div class="panel-h"><span class="n" id="extrasPanelNum">3</span><h3>Add Extras</h3><span class="hint">optional · set a quantity</span></div>
           <div class="panel-b" id="addonBox"></div>
         </div>
 

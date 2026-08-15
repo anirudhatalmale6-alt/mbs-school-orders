@@ -150,6 +150,17 @@ function mbs_program_defaults() {
         'showJersey'    => 1,
         'sportLabel'    => 'Sport',
         'intro'         => '',
+        // Which blocks the form asks for at all. Defaults = the original form.
+        'showWho'       => 1,
+        'showBuyer'     => 1,
+        'phoneMode'     => 'req',   // req | opt | off
+        'emailMode'     => 'req',   // req | opt | off
+        'showNotes'     => 1,
+        // Per-form branding + the printable order form
+        'colorBg'       => '',
+        'colorAccent'   => '',
+        'pdfUrl'        => '',
+        'pdfLabel'      => '',
         'deadline'      => '',
         'productsUrl'   => '',
         'packages'      => array(),
@@ -506,6 +517,77 @@ function mbs_admin_edit_screen() {
                 </tr>
             </table>
 
+            <h2 class="title">Which fields to ask for</h2>
+            <p class="description" style="max-width:820px">
+                Every box here is one less thing between a customer and a purchase. Selling prints at an art
+                fair? Switch everything off except one name. The payment page still collects a name and email
+                for the receipt — that part is the card processor's, not mine to remove.
+            </p>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row">Name fields</th>
+                    <td>
+                        <label style="display:block;margin-bottom:6px">
+                            <input type="checkbox" name="showWho" value="1" <?php checked(!empty($p['showWho'])); ?>>
+                            Ask for the <strong><?php echo esc_html($p['whoLabel']); ?></strong>'s first &amp; last name
+                        </label>
+                        <label style="display:block">
+                            <input type="checkbox" name="showBuyer" value="1" <?php checked(!empty($p['showBuyer'])); ?>>
+                            Ask for the <strong><?php echo esc_html($p['buyerLabel']); ?></strong>'s first &amp; last name
+                        </label>
+                        <p class="description">Keep at least one — an order has to carry a name.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_phonemode">Phone</label></th>
+                    <td>
+                        <select name="phoneMode" id="mbs_phonemode">
+                            <option value="req" <?php selected(($p['phoneMode'] ?? 'req'), 'req'); ?>>Required</option>
+                            <option value="opt" <?php selected(($p['phoneMode'] ?? 'req'), 'opt'); ?>>Optional</option>
+                            <option value="off" <?php selected(($p['phoneMode'] ?? 'req'), 'off'); ?>>Don't ask</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_emailmode">Email</label></th>
+                    <td>
+                        <select name="emailMode" id="mbs_emailmode">
+                            <option value="req" <?php selected(($p['emailMode'] ?? 'req'), 'req'); ?>>Required</option>
+                            <option value="opt" <?php selected(($p['emailMode'] ?? 'req'), 'opt'); ?>>Optional</option>
+                            <option value="off" <?php selected(($p['emailMode'] ?? 'req'), 'off'); ?>>Don't ask</option>
+                        </select>
+                        <p class="description">The receipt goes to whatever they enter at the payment page, so switching this off doesn't stop them getting one.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Notes box</th>
+                    <td>
+                        <label><input type="checkbox" name="showNotes" value="1" <?php checked(!empty($p['showNotes'])); ?>> Show "Notes / special requests"</label>
+                    </td>
+                </tr>
+            </table>
+
+            <h2 class="title">Colours</h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="mbs_colorbg">Header background</label></th>
+                    <td>
+                        <input type="color" id="mbs_colorbg_pick" value="<?php echo esc_attr($p['colorBg'] !== '' ? $p['colorBg'] : '#0b1f3a'); ?>" style="vertical-align:middle;width:56px;height:34px;padding:2px">
+                        <input name="colorBg" id="mbs_colorbg" type="text" value="<?php echo esc_attr($p['colorBg']); ?>" placeholder="#0b1f3a" class="code" style="max-width:140px;vertical-align:middle">
+                        <button type="button" class="button-link mbs-color-reset" data-for="colorbg" style="margin-left:10px">Use the default</button>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="mbs_coloraccent">Accent</label></th>
+                    <td>
+                        <input type="color" id="mbs_coloraccent_pick" value="<?php echo esc_attr($p['colorAccent'] !== '' ? $p['colorAccent'] : '#d81e2c'); ?>" style="vertical-align:middle;width:56px;height:34px;padding:2px">
+                        <input name="colorAccent" id="mbs_coloraccent" type="text" value="<?php echo esc_attr($p['colorAccent']); ?>" placeholder="#d81e2c" class="code" style="max-width:140px;vertical-align:middle">
+                        <button type="button" class="button-link mbs-color-reset" data-for="coloraccent" style="margin-left:10px">Use the default</button>
+                        <p class="description">The year in the heading, the buttons and the required stars. Leave both blank for the standard navy and scarlet.</p>
+                    </td>
+                </tr>
+            </table>
+
             <h2 class="title">Page extras</h2>
             <table class="form-table" role="presentation">
                 <tr>
@@ -513,6 +595,18 @@ function mbs_admin_edit_screen() {
                     <td>
                         <input name="deadline" id="mbs_deadline" type="text" class="regular-text" value="<?php echo esc_attr($p['deadline']); ?>" placeholder="March 14, 2026">
                         <p class="description">Leave blank to hide the deadline sentence entirely.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Paper order form</th>
+                    <td>
+                        <input name="pdfUrl" id="mbs_pdf" type="text" class="large-text code" value="<?php echo esc_attr($p['pdfUrl']); ?>">
+                        <p>
+                            <button type="button" class="button" id="mbs_pick_pdf">Choose PDF from Media Library</button>
+                            <button type="button" class="button-link" id="mbs_clear_pdf" style="color:#b32d2e;margin-left:10px">Remove</button>
+                        </p>
+                        <input name="pdfLabel" type="text" class="regular-text" value="<?php echo esc_attr($p['pdfLabel']); ?>" placeholder="Download the paper order form (PDF)">
+                        <p class="description">Shows a download button near the top of the form, for families who want to order on paper. Leave the file blank to hide it. The second box is the button wording (optional).</p>
                     </td>
                 </tr>
                 <tr>
@@ -537,7 +631,7 @@ function mbs_admin_edit_screen() {
                         <th style="width:180px">Name</th>
                         <th style="width:100px">Price</th>
                         <th>What's included</th>
-                        <th style="width:70px">Photo</th>
+                        <th style="width:90px">Photo</th>
                         <th style="width:60px"></th>
                     </tr>
                 </thead>
@@ -566,7 +660,7 @@ function mbs_admin_edit_screen() {
                         <th>Item name</th>
                         <th style="width:100px">Price</th>
                         <th style="width:70px">Buddy</th>
-                        <th style="width:70px">Photo</th>
+                        <th style="width:90px">Photo</th>
                         <th style="width:60px"></th>
                     </tr>
                 </thead>
@@ -662,6 +756,73 @@ function mbs_admin_edit_screen() {
             });
             frame.open();
         });
+        // Per-product photo pickers. Delegated, so rows added after page load work too.
+        var photoFrame;
+        document.addEventListener('click', function (e) {
+            var pick = e.target.closest ? e.target.closest('.mbs-pick-photo') : null;
+            if (pick) {
+                e.preventDefault();
+                var cell = pick.closest('.mbs-photo');
+                photoFrame = wp.media({ title: 'Choose a product photo', library: { type: 'image' },
+                                        button: { text: 'Use this photo' }, multiple: false });
+                photoFrame.on('select', function () {
+                    var a = photoFrame.state().get('selection').first().toJSON();
+                    cell.querySelector('.mbs-photo-val').value = a.url;
+                    var img = cell.querySelector('.mbs-photo-prev');
+                    img.src = a.url; img.style.display = '';
+                    cell.querySelector('.mbs-clear-photo').style.display = 'block';
+                });
+                photoFrame.open();
+                return;
+            }
+            var clear = e.target.closest ? e.target.closest('.mbs-clear-photo') : null;
+            if (clear) {
+                e.preventDefault();
+                var c = clear.closest('.mbs-photo');
+                c.querySelector('.mbs-photo-val').value = '';
+                c.querySelector('.mbs-photo-prev').style.display = 'none';
+                clear.style.display = 'none';
+            }
+        });
+
+        // Colour pickers stay in step with their hex boxes, both ways.
+        [['mbs_colorbg', 'mbs_colorbg_pick'], ['mbs_coloraccent', 'mbs_coloraccent_pick']].forEach(function (pair) {
+            var text = document.getElementById(pair[0]), swatch = document.getElementById(pair[1]);
+            if (!text || !swatch) return;
+            swatch.addEventListener('input', function () { text.value = swatch.value; });
+            text.addEventListener('input', function () {
+                if (/^#[0-9a-fA-F]{6}$/.test(text.value.trim())) swatch.value = text.value.trim();
+            });
+        });
+        document.querySelectorAll('.mbs-color-reset').forEach(function (b) {
+            b.addEventListener('click', function (e) {
+                e.preventDefault();
+                var t = document.getElementById('mbs_' + b.dataset.for);
+                if (t) t.value = '';
+            });
+        });
+
+        // PDF picker (any file type — it's a document, not an image).
+        var pdfFrame;
+        var pdfBtn = document.getElementById('mbs_pick_pdf');
+        if (pdfBtn) pdfBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (!pdfFrame) {
+                pdfFrame = wp.media({ title: 'Choose the paper order form',
+                                      button: { text: 'Use this file' }, multiple: false });
+                pdfFrame.on('select', function () {
+                    var a = pdfFrame.state().get('selection').first().toJSON();
+                    document.getElementById('mbs_pdf').value = a.url;
+                });
+            }
+            pdfFrame.open();
+        });
+        var pdfClr = document.getElementById('mbs_clear_pdf');
+        if (pdfClr) pdfClr.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('mbs_pdf').value = '';
+        });
+
         var clr = document.getElementById('mbs_clear_logo');
         if (clr) clr.addEventListener('click', function (e) {
             e.preventDefault();
@@ -675,9 +836,24 @@ function mbs_admin_edit_screen() {
 
 /* ---- row renderers (shared by PHP render + the JS "add row" template) ---- */
 
+/** The Photo cell used by both package and add-on rows. */
+function mbs_photo_cell($name, $value) {
+    $url = mbs_asset_url($value);
+    ob_start(); ?>
+    <td class="mbs-photo">
+        <img class="mbs-photo-prev" src="<?php echo esc_url($url); ?>" alt=""
+             style="width:40px;height:40px;object-fit:cover;border-radius:5px;<?php echo $url ? '' : 'display:none'; ?>"
+             onerror="this.style.display='none'">
+        <input type="hidden" class="mbs-photo-val" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($value); ?>">
+        <button type="button" class="button-link mbs-pick-photo" style="display:block;margin-top:2px">Choose</button>
+        <button type="button" class="button-link mbs-clear-photo" style="display:<?php echo $value !== '' ? 'block' : 'none'; ?>;color:#b32d2e">Remove</button>
+    </td>
+    <?php
+    return ob_get_clean();
+}
+
 function mbs_pkg_row_html($i, $tag, $pk) {
     $pk = array_merge(array('name' => '', 'price' => '', 'inc' => '', 'img' => '', 'off' => 0), (array) $pk);
-    $img_url = mbs_asset_url($pk['img']);
     ob_start(); ?>
     <tr>
         <td><input type="checkbox" name="packages[<?php echo esc_attr($i); ?>][on]" value="1" <?php checked(empty($pk['off'])); ?>></td>
@@ -686,15 +862,8 @@ function mbs_pkg_row_html($i, $tag, $pk) {
         <td><input type="number" step="0.01" min="0" name="packages[<?php echo esc_attr($i); ?>][price]" value="<?php echo esc_attr($pk['price']); ?>" style="width:100%"></td>
         <td>
             <input type="text" name="packages[<?php echo esc_attr($i); ?>][inc]" value="<?php echo esc_attr(mbs_inc_to_editor($pk['inc'])); ?>" style="width:100%" placeholder="2 × 5×7 prints · 8 wallets">
-            <input type="hidden" name="packages[<?php echo esc_attr($i); ?>][img]" value="<?php echo esc_attr($pk['img']); ?>">
         </td>
-        <td style="text-align:center">
-            <?php if ($img_url) : ?>
-                <img src="<?php echo esc_url($img_url); ?>" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:5px" onerror="this.style.display='none'">
-            <?php else : ?>
-                <span style="color:#8c8f94">—</span>
-            <?php endif; ?>
-        </td>
+        <?php echo mbs_photo_cell('packages[' . $i . '][img]', $pk['img']); ?>
         <td><button type="button" class="button-link mbs-del-row" style="color:#b32d2e">Remove</button></td>
     </tr>
     <?php
@@ -706,7 +875,6 @@ function mbs_render_pkg_row($i, $tag, $pk) {
 
 function mbs_addon_row_html($i, $a) {
     $a = array_merge(array('group' => '', 'id' => '', 't' => '', 'p' => '', 'img' => '', 'buddy' => 0, 'off' => 0), (array) $a);
-    $img_url = mbs_asset_url($a['img']);
     ob_start(); ?>
     <tr>
         <td><input type="checkbox" name="addons[<?php echo esc_attr($i); ?>][on]" value="1" <?php checked(empty($a['off'])); ?>></td>
@@ -714,17 +882,10 @@ function mbs_addon_row_html($i, $a) {
         <td>
             <input type="text" name="addons[<?php echo esc_attr($i); ?>][t]" value="<?php echo esc_attr($a['t']); ?>" style="width:100%" placeholder="(1) 8&times;10 Individual Print">
             <input type="hidden" name="addons[<?php echo esc_attr($i); ?>][id]" value="<?php echo esc_attr($a['id']); ?>">
-            <input type="hidden" name="addons[<?php echo esc_attr($i); ?>][img]" value="<?php echo esc_attr($a['img']); ?>">
         </td>
         <td><input type="number" step="0.01" min="0" name="addons[<?php echo esc_attr($i); ?>][p]" value="<?php echo esc_attr($a['p']); ?>" style="width:100%"></td>
         <td style="text-align:center"><input type="checkbox" name="addons[<?php echo esc_attr($i); ?>][buddy]" value="1" <?php checked(!empty($a['buddy'])); ?>></td>
-        <td style="text-align:center">
-            <?php if ($img_url) : ?>
-                <img src="<?php echo esc_url($img_url); ?>" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:5px" onerror="this.style.display='none'">
-            <?php else : ?>
-                <span style="color:#8c8f94">—</span>
-            <?php endif; ?>
-        </td>
+        <?php echo mbs_photo_cell('addons[' . $i . '][img]', $a['img']); ?>
         <td><button type="button" class="button-link mbs-del-row" style="color:#b32d2e">Remove</button></td>
     </tr>
     <?php
@@ -775,6 +936,18 @@ function mbs_handle_save_program() {
     $prog['sportLabel']    = sanitize_text_field(wp_unslash($_POST['sportLabel'] ?? '')) ?: 'Sport';
     $prog['showJersey']    = empty($_POST['showJersey']) ? 0 : 1;
     $prog['intro']         = mbs_inc_from_editor(wp_unslash($_POST['intro'] ?? ''));
+    $prog['showWho']       = empty($_POST['showWho'])   ? 0 : 1;
+    $prog['showBuyer']     = empty($_POST['showBuyer']) ? 0 : 1;
+    $prog['showNotes']     = empty($_POST['showNotes']) ? 0 : 1;
+    // An order must carry a name, so refuse to switch both name blocks off.
+    if (!$prog['showWho'] && !$prog['showBuyer']) $prog['showWho'] = 1;
+    $mode = function ($v) { return in_array($v, array('req', 'opt', 'off'), true) ? $v : 'req'; };
+    $prog['phoneMode']     = $mode(sanitize_text_field(wp_unslash($_POST['phoneMode'] ?? 'req')));
+    $prog['emailMode']     = $mode(sanitize_text_field(wp_unslash($_POST['emailMode'] ?? 'req')));
+    $prog['colorBg']       = mbs_hex(wp_unslash($_POST['colorBg'] ?? ''));
+    $prog['colorAccent']   = mbs_hex(wp_unslash($_POST['colorAccent'] ?? ''));
+    $prog['pdfUrl']        = esc_url_raw(wp_unslash($_POST['pdfUrl'] ?? ''));
+    $prog['pdfLabel']      = sanitize_text_field(wp_unslash($_POST['pdfLabel'] ?? ''));
     $prog['divisions']     = mbs_lines_to_array(wp_unslash($_POST['divisions'] ?? ''));
 
     // Logo: a media-library URL, or a filename shipped in /assets.

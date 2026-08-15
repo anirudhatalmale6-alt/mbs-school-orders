@@ -71,6 +71,7 @@ label.fld .lab{font-family:'Barlow Condensed',sans-serif;text-transform:uppercas
 .inp:focus,select.inp:focus{outline:none;border-color:var(--navy);background:#fff;box-shadow:0 0 0 4px rgba(11,31,58,.09)}
 textarea.inp{min-height:62px;resize:vertical;line-height:1.45}
 .grid1{display:grid;grid-template-columns:1fr;gap:14px}
+.mbs-app .lab .opt{color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 

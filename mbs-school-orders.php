@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS Order Forms
  * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.2.0');
+define('MBS_SO_VER', '1.3.0');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -33,6 +33,65 @@ function mbs_asset_url($v) {
     if ($v === '') return '';
     if (preg_match('#^(https?:)?//#', $v) || $v[0] === '/') return $v;
     return MBS_SO_URL . 'assets/' . $v;
+}
+
+/* -------------------------------------------------------------------------
+ *  Per-form colours
+ *
+ *  The design's palette lives in CSS variables, but the masthead gradient was
+ *  written with literal hex values, so a form with its own colours needs both
+ *  the variables re-pointed AND that gradient rebuilt. Everything is scoped to
+ *  .mbs-app so it can never leak into the rest of the site.
+ * ---------------------------------------------------------------------- */
+
+/** Normalise "#abc" / "abc123" / "#ABC123" to "#abc123"; returns '' if not a colour. */
+function mbs_hex($v) {
+    $v = ltrim(trim((string) $v), '#');
+    if (preg_match('/^[0-9a-f]{3}$/i', $v)) {
+        $v = $v[0] . $v[0] . $v[1] . $v[1] . $v[2] . $v[2];
+    }
+    return preg_match('/^[0-9a-f]{6}$/i', $v) ? '#' . strtolower($v) : '';
+}
+
+/** Mix a hex colour towards black (factor < 1) or white (factor > 1). */
+function mbs_shade($hex, $factor) {
+    $hex = mbs_hex($hex);
+    if ($hex === '') return '';
+    $out = '#';
+    for ($i = 1; $i < 7; $i += 2) {
+        $c = hexdec(substr($hex, $i, 2));
+        $c = $factor <= 1 ? $c * $factor : $c + (255 - $c) * ($factor - 1);
+        $out .= str_pad(dechex(max(0, min(255, (int) round($c)))), 2, '0', STR_PAD_LEFT);
+    }
+    return $out;
+}
+
+/** "11,31,58" for use inside rgba(). */
+function mbs_rgb($hex) {
+    $hex = mbs_hex($hex);
+    if ($hex === '') return '';
+    return hexdec(substr($hex, 1, 2)) . ',' . hexdec(substr($hex, 3, 2)) . ',' . hexdec(substr($hex, 5, 2));
+}
+
+/** The scoped <style> for one form's colours, or '' when it uses the defaults. */
+function mbs_program_css($prog) {
+    $bg     = mbs_hex($prog['colorBg'] ?? '');
+    $accent = mbs_hex($prog['colorAccent'] ?? '');
+    if ($bg === '' && $accent === '') return '';
+
+    $css = '.mbs-app{';
+    if ($bg !== '')     $css .= '--navy:' . $bg . ';--navy-2:' . mbs_shade($bg, 1.18) . ';';
+    if ($accent !== '') $css .= '--scarlet:' . $accent . ';--scarlet-dk:' . mbs_shade($accent, .82) . ';';
+    $css .= '}';
+
+    // Rebuild the masthead gradient from whichever colours were given.
+    $grad_bg  = $bg !== '' ? $bg : '#0b1f3a';
+    $grad_acc = $accent !== '' ? mbs_rgb($accent) : '216,30,44';
+    $css .= '.mbs-app header.masthead{background-color:' . $grad_bg . ';'
+          . 'background:radial-gradient(120% 140% at 85% -20%, rgba(' . $grad_acc . ',.35) 0%, transparent 55%),'
+          . 'radial-gradient(90% 120% at 0% 120%, rgba(230,179,74,.18) 0%, transparent 50%),'
+          . 'linear-gradient(160deg,' . $grad_bg . ' 0%,' . mbs_shade($grad_bg, .88) . ' 60%,' . mbs_shade($grad_bg, .72) . ' 100%)}';
+    return $css;
 }
 
 /* -------------------------------------------------------------------------
@@ -243,6 +302,13 @@ function mbs_shortcode($atts) {
     include MBS_SO_DIR . 'templates/form.php';
     $html = ob_get_clean();
 
+    // This form's own colours, if it has any. Inline (not enqueued) for the same
+    // reason as the script below: nothing can combine or defer it away.
+    $prog_css = mbs_program_css($prog);
+    if ($prog_css !== '') {
+        $html = '<style data-no-optimize="1" data-no-minify="1">' . $prog_css . '</style>' . $html;
+    }
+
     // Print the config + JS INLINE (not as an enqueued external file). Aggressive optimizers
     // on the host (WP Rocket, SiteGround Optimizer) were combining the external file into a
     // bundle that 404'd, so the form never initialised. Inline can't be combined away.
@@ -363,19 +429,42 @@ function mbs_ajax_add() {
         wp_send_json_error('Please pick a package or at least one item.');
     }
 
-    // Athlete / parent details
+    // Who the order is for / who is buying. A form can be cut back to a single
+    // name box, so only the blocks this form actually asks for are enforced —
+    // and they're enforced HERE too, not just in the browser.
+    $want_who   = !isset($prog['showWho'])   || !empty($prog['showWho']);
+    $want_buyer = !isset($prog['showBuyer']) || !empty($prog['showBuyer']);
+    $phone_mode = isset($prog['phoneMode']) ? $prog['phoneMode'] : 'req';
+    $email_mode = isset($prog['emailMode']) ? $prog['emailMode'] : 'req';
+
     $athlete = sanitize_text_field(wp_unslash($_POST['athlete'] ?? ''));
     $parent  = sanitize_text_field(wp_unslash($_POST['parent'] ?? ''));
-    if ($athlete === '' || $parent === '') {
-        wp_send_json_error('Athlete and parent names are required.');
+    if ($want_who && $athlete === '') {
+        wp_send_json_error(($prog['whoLabel'] ?? 'Athlete') . ' name is required.');
     }
+    if ($want_buyer && $parent === '') {
+        wp_send_json_error(($prog['buyerLabel'] ?? 'Parent') . ' name is required.');
+    }
+    // Whatever the settings say, an order has to carry SOME name on it.
+    if ($athlete === '' && $parent === '') {
+        wp_send_json_error('Please enter a name.');
+    }
+
     $phone = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
     $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
-    if (strlen(preg_replace('/\D/', '', $phone)) !== 10) {
+    if ($phone_mode === 'off') $phone = '';
+    if ($email_mode === 'off') $email = '';
+    if ($phone_mode === 'req' && $phone === '') {
+        wp_send_json_error('A phone number is required.');
+    }
+    if ($phone !== '' && strlen(preg_replace('/\D/', '', $phone)) !== 10) {
         wp_send_json_error('Please enter a 10-digit phone number.');
     }
-    if ($email === '' || !is_email($email)) {
+    if ($email_mode === 'req' && $email === '') {
         wp_send_json_error('A valid email address is required.');
+    }
+    if ($email !== '' && !is_email($email)) {
+        wp_send_json_error('Please enter a valid email address.');
     }
     $buddy = sanitize_text_field(wp_unslash($_POST['buddy'] ?? ''));
     $notes = sanitize_textarea_field(wp_unslash($_POST['notes'] ?? ''));
@@ -394,7 +483,9 @@ function mbs_ajax_add() {
     $meta = array(
         'total'    => round($total, 2),
         'program'  => $prog['name'],
-        'athlete'  => $athlete,
+        // Fall back to the buyer's name when this form doesn't ask for a separate
+        // one, so the cart line, the order and the export are never nameless.
+        'athlete'  => $athlete !== '' ? $athlete : $parent,
         'parent'   => $parent,
         'athFirst' => sanitize_text_field(wp_unslash($_POST['athFirst'] ?? '')),
         'athLast'  => sanitize_text_field(wp_unslash($_POST['athLast'] ?? '')),
@@ -664,9 +755,11 @@ function mbs_prefill_checkout($value, $input) {
         case 'billing_email': return !empty($m['email']) ? $m['email'] : $value;
         case 'billing_phone': return !empty($m['phone']) ? $m['phone'] : $value;
         case 'billing_first_name':
-            $n = mbs_split_name($m['parent'] ?? ''); return $n[0] !== '' ? $n[0] : $value;
+            $n = mbs_split_name(($m['parent'] ?? '') !== '' ? $m['parent'] : ($m['athlete'] ?? ''));
+            return $n[0] !== '' ? $n[0] : $value;
         case 'billing_last_name':
-            $n = mbs_split_name($m['parent'] ?? ''); return $n[1] !== '' ? $n[1] : $value;
+            $n = mbs_split_name(($m['parent'] ?? '') !== '' ? $m['parent'] : ($m['athlete'] ?? ''));
+            return $n[1] !== '' ? $n[1] : $value;
     }
     return $value;
 }

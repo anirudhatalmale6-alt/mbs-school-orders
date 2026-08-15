@@ -7,6 +7,7 @@
 
   // Flatten add-ons + keep group order
   var ADDONS = P.addons || [];
+  var SHOW_WHO = true, SHOW_BUYER = true, PHONE_MODE = 'req', EMAIL_MODE = 'req';
   var byId = {};
   ADDONS.forEach(function (a) { byId[a.id] = a; });
   var qty = {};
@@ -64,6 +65,39 @@
     $('labBuyerFirst').innerHTML = buyer + ' First Name' + req;
     $('labBuyerLast').innerHTML = buyer + ' Last Name' + req;
 
+    /* ---- which blocks this form asks for at all ----
+       An art-fair form may want nothing but a name, so each block can be
+       switched off. Undefined means a form saved before these options existed,
+       which must keep asking for everything exactly as before. */
+    var on = function (v) { return (typeof v === 'undefined') ? true : !!Number(v); };
+    SHOW_WHO   = on(P.showWho);
+    SHOW_BUYER = on(P.showBuyer);
+    PHONE_MODE = P.phoneMode || 'req';
+    EMAIL_MODE = P.emailMode || 'req';
+
+    $('whoRow').style.display   = SHOW_WHO ? '' : 'none';
+    $('buyerRow').style.display = SHOW_BUYER ? '' : 'none';
+    $('notesField').style.display = on(P.showNotes) ? '' : 'none';
+
+    $('phoneField').style.display = PHONE_MODE === 'off' ? 'none' : '';
+    $('emailField').style.display = EMAIL_MODE === 'off' ? 'none' : '';
+    $('labPhone').innerHTML = 'Phone' + (PHONE_MODE === 'req' ? req : ' <span class="opt">(optional)</span>');
+    $('labEmail').innerHTML = 'Email (for receipt)' + (EMAIL_MODE === 'req' ? req : ' <span class="opt">(optional)</span>');
+    var contactShown = (PHONE_MODE !== 'off' ? 1 : 0) + (EMAIL_MODE !== 'off' ? 1 : 0);
+    $('contactRow').style.display = contactShown ? '' : 'none';
+    $('contactRow').className = contactShown === 2 ? 'grid2' : 'grid1';
+
+    // The section heading only names the blocks that are actually there.
+    $('secWho').textContent = SHOW_WHO && SHOW_BUYER ? (who + ' & ' + buyer)
+                            : (SHOW_WHO ? who : (SHOW_BUYER ? buyer : 'Your details'));
+
+    // Paper order form
+    if (P.pdfUrl) {
+      $('progPdfLink').href = P.pdfUrl;
+      if (P.pdfLabel) $('progPdfLink').textContent = P.pdfLabel;
+      $('progPdf').style.display = 'block';
+    }
+
     /* ---- the middle row: jersey / category / group. Any of the three can be
            switched off, so the column count is worked out from what's left. ---- */
     // PHP stores this as 1/0, which arrives as a NUMBER — so `!== false` would be
@@ -95,19 +129,35 @@
     /* ---- the remaining places the word "athlete" appears to a customer ---- */
     var lw = who.toLowerCase(), lb = buyer.toLowerCase();
     $('stepWho').innerHTML = 'Enter the ' + lw + ' &amp; ' + lb + ' details';
-    $('liveTitle').textContent = 'This ' + who + "'s Order";
+    // "This Athlete's Order" reads fine; "This Name's Order" does not. When the
+    // form calls the person a generic thing, drop the possessive.
+    var generic = /^(name|your name|full name|customer|buyer)$/i.test(who);
+    $('liveTitle').textContent = generic ? 'Your Order' : ('This ' + who + "'s Order");
+    $('multiHint').textContent = generic
+      ? 'Order for several people in one cart'
+      : ('Order multiple ' + lw + 's in one cart');
     $('mbsAddAnother').innerHTML = '\uFF0B Add another ' + lw;
-    $('multiHint').textContent = 'Order multiple ' + lw + 's in one cart';
     $('addedHint').textContent = 'You can review or change this order any time from your cart. '
       + 'Most people just head to checkout \u2014 only add another ' + lw + ' if you have more than one.';
 
-    // packages dropdown
+    // packages dropdown. A form can sell nothing but individual items, in which
+    // case the whole package step is noise — hide it and renumber the steps.
+    var pkgKeys = Object.keys(P.packages || {});
     var opts = '';
-    Object.keys(P.packages || {}).forEach(function (k) {
+    pkgKeys.forEach(function (k) {
       opts += '<option value="' + k + '">' + P.packages[k].name + ' — ' + money(P.packages[k].price) + '</option>';
     });
     opts += '<option value="NONE">No package — just add-ons</option>';
     $('fPkg').innerHTML = opts;
+    if (!pkgKeys.length) {
+      $('fPkg').value = 'NONE';
+      $('pkgPanel').style.display = 'none';
+      $('extrasPanelNum').textContent = '2';
+      $('stepPick').textContent = 'Choose what you want';
+    } else {
+      $('pkgPanel').style.display = '';
+      $('extrasPanelNum').textContent = '3';
+    }
   }
   function currentSport() {
     if (P.sports && P.sports.length > 1) return $('fSport').value;
@@ -183,20 +233,36 @@
     var af = $('fAthFirst').value.trim(), al = $('fAthLast').value.trim();
     var pf = $('fParFirst').value.trim(), pl = $('fParLast').value.trim();
     var ph = $('fPhone').value.trim(), em = $('fEmail').value.trim();
+    // Only ask for what this form actually shows. A form cut back to a single
+    // name box must not fail validation on fields nobody can see.
     var reqFields = ['fAthFirst', 'fAthLast', 'fParFirst', 'fParLast', 'fPhone', 'fEmail'];
-    var miss = [];
-    if (!af) miss.push('fAthFirst'); if (!al) miss.push('fAthLast');
-    if (!pf) miss.push('fParFirst'); if (!pl) miss.push('fParLast');
-    if (!ph) miss.push('fPhone'); if (!em) miss.push('fEmail');
+    var miss = [], wants = [];
+    if (SHOW_WHO) {
+      if (!af) miss.push('fAthFirst');
+      if (!al) miss.push('fAthLast');
+      wants.push((P.whoLabel || 'athlete').toLowerCase());
+    }
+    if (SHOW_BUYER) {
+      if (!pf) miss.push('fParFirst');
+      if (!pl) miss.push('fParLast');
+      wants.push((P.buyerLabel || 'parent').toLowerCase());
+    }
+    if (PHONE_MODE === 'req' && !ph) { miss.push('fPhone'); wants.push('phone'); }
+    if (EMAIL_MODE === 'req' && !em) { miss.push('fEmail'); wants.push('email'); }
     reqFields.forEach(function (id) { $(id).style.borderColor = ''; });
     miss.forEach(function (id) { $(id).style.borderColor = 'var(--scarlet)'; });
     if (miss.length) {
       $(miss[0]).focus();
-      toast('Please fill in ' + (P.whoLabel || 'athlete').toLowerCase() + ', ' + (P.buyerLabel || 'parent').toLowerCase() + ', phone and email');
+      toast('Please fill in ' + wants.join(', '));
       return;
     }
-    if (ph.replace(/\D/g, '').length !== 10) { $('fPhone').style.borderColor = 'var(--scarlet)'; $('fPhone').focus(); toast('Please enter a 10-digit phone number'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { $('fEmail').style.borderColor = 'var(--scarlet)'; $('fEmail').focus(); toast('Please enter a valid email address'); return; }
+    // Format checks apply to whatever was actually typed, required or not.
+    if (PHONE_MODE !== 'off' && ph && ph.replace(/\D/g, '').length !== 10) {
+      $('fPhone').style.borderColor = 'var(--scarlet)'; $('fPhone').focus(); toast('Please enter a 10-digit phone number'); return;
+    }
+    if (EMAIL_MODE !== 'off' && em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      $('fEmail').style.borderColor = 'var(--scarlet)'; $('fEmail').focus(); toast('Please enter a valid email address'); return;
+    }
 
     var p = curPkg(), ad = selectedAddons();
     if (!p.price && !ad.length) { toast('Pick a package or add at least one item'); return; }
