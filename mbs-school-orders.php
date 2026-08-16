@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS Order Forms
  * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
- * Version:     1.3.3
+ * Version:     1.3.4
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.3.3');
+define('MBS_SO_VER', '1.3.4');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR

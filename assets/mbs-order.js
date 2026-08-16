@@ -40,6 +40,51 @@
   function openLb(label, img) { $('lbImg').src = (img && img.length) ? img : sampleImg(label); $('lbCap').textContent = label; $('lightbox').classList.add('show'); }
   function closeLb() { $('lightbox').classList.remove('show'); }
 
+  /* ---------- keep the site's own header off the top of the form ----------
+     Bridge/Qode (and most themes with a "header over content" option) pull the
+     page content up underneath the site header with a negative margin, then
+     paint the header on top of it. On the Sharks page that was margin-top:-123px
+     against a 143px header, so the top 123px of the form's navy box — including
+     the top of the school logo — sat behind the white site header and looked
+     cut off. Nothing in this plugin was wrong; the form was simply parked under
+     something.
+
+     The header's height is not something this plugin can know: it is a theme
+     setting, it differs per page, it shrinks when sticky, and it changes with
+     screen width. So don't guess it — measure it, and only move if there is a
+     real overlap. On a page whose content already starts below the header the
+     overlap is zero or negative and nothing happens at all. */
+  function clearSiteHeader() {
+    var app = document.querySelector('.mbs-app');
+    if (!app) return;
+
+    app.style.paddingTop = '';                 // measure the untouched position
+    var appRect = app.getBoundingClientRect();
+    var appTop  = appRect.top + window.pageYOffset;
+    if (appTop > 600) return;                  // form is far down the page; nothing overlaps it
+
+    var sels = ['header.page_header', '.qodef-page-header', 'header#masthead',
+                'header.site-header', '.site-header', 'header[role="banner"]', '#header'];
+    var lowest = 0;
+    sels.forEach(function (sel) {
+      var els;
+      try { els = document.querySelectorAll(sel); } catch (e) { return; }
+      Array.prototype.forEach.call(els, function (el) {
+        if (app.contains(el) || el.contains(app)) return;   // our own header, or a wrapper
+        var cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || !el.offsetHeight) return;
+        var r = el.getBoundingClientRect();
+        // A fixed header travels with the viewport, so its reach is its own
+        // height. Anything else is measured where it actually sits on the page.
+        var bottom = (cs.position === 'fixed') ? r.height : r.bottom + window.pageYOffset;
+        if (bottom > lowest) lowest = bottom;
+      });
+    });
+
+    var overlap = lowest - appTop;
+    if (overlap > 0) app.style.paddingTop = Math.ceil(overlap + 12) + 'px';
+  }
+
   /* ---------- program header + selects ---------- */
   function initProgram() {
     if (P.logoUrl) { $('crestLogo').src = P.logoUrl; $('crestLogo').style.display = 'block'; $('crestShield').style.display = 'none'; }
@@ -438,4 +483,12 @@
   renderAddons();
   bind();
   resolvePrefill();
+
+  // Header clearance last, once the form is its final size. Re-measured on
+  // resize, and again after a moment because sticky headers finish settling
+  // (and web fonts finish loading) after this script has run.
+  clearSiteHeader();
+  window.addEventListener('load', clearSiteHeader);
+  window.addEventListener('resize', clearSiteHeader);
+  setTimeout(clearSiteHeader, 800);
 })();

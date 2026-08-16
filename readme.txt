@@ -274,3 +274,30 @@ behaviour half of every past update worked while the styling half did not.
 This does mean the styling arrives with the JavaScript. That costs nothing here:
 the packages, extras, prices and totals are all drawn by that same script, so a
 browser that isn't running it has no order form to style in the first place.
+
+== The real reason the top of the logo was cut off (1.3.4) ==
+The 1.3.2 and 1.3.3 work was needed — the styling genuinely was arriving stale —
+but it was not what was cutting the shark's head off. That was the theme.
+
+Your theme has a "header over content" setting, and on the Sharks page it is on.
+It pulls the page content up by 123 pixels and then paints the white site header
+on top of it. Measured on the live page: the site header runs from 0 to 143
+pixels down, and the order form's navy box started at 20. So the top 123 pixels
+of the form — which is where the logo sits — were behind the header. Nothing in
+the form was wrong; the form was simply parked underneath something.
+
+From 1.3.4 the form checks, when it loads, whether the site header is sitting
+over the top of it, and drops itself down far enough to clear it. It measures the
+header rather than assuming a size, because that size changes with the theme
+settings, the page, and the width of the screen — and it re-checks when the
+window is resized. On a page where the content already starts below the header
+there is no overlap and nothing moves.
+
+Nothing to configure, and you do not need to change your theme settings.
+
+== A note on where the logo sits ==
+The Sharks form is currently set to "Logo placement: Beside the heading
+(small)", which keeps the logo small on purpose so it does not fight the
+headline. If you want the big version — roughly three times the size, in its own
+column — open the form under School Order Forms and change "Logo placement" to
+"On the right, large". Both placements clear the site header from 1.3.4.
