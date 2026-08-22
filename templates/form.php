@@ -74,6 +74,7 @@
               <span class="chev"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
             </label>
             <div class="pkg-detail" id="pkgDetail"></div>
+            <div id="pkgQ" style="display:none"></div>
           </div>
         </div>
 

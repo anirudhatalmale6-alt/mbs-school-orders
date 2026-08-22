@@ -241,3 +241,19 @@ html body .mbs-app header.masthead h1.title .yr{color:var(--scarlet) !important}
 /* Qode wraps content narrow + adds link underlines; relax inside our app */
 .mbs-app a{text-decoration:none !important;box-shadow:none !important}
 .mbs-app .inp,.mbs-app select.inp{color:var(--ink) !important}
+
+/* A made-to-order item's question (engraving text, a name for a plaque). It appears
+   under the item the moment one is added, so it is deliberately tinted and inset —
+   the buyer should read it as belonging to the item above it, not as one more field
+   in a long form they can skim past. */
+.item-q{
+  margin:8px 0 14px;padding:11px 13px;border-radius:9px;
+  background:rgba(11,31,58,.045);border:1px solid rgba(11,31,58,.14);
+  border-left:4px solid var(--gold,#e6b34a);
+}
+.item-q .lab{font-size:13px;margin-bottom:6px}
+.item-q .inp{background:#fff}
+#pkgQ .item-q{margin-top:12px}
+
+/* A toast that is telling you something is missing should not look like a receipt. */
+.toast.warn{background:#8a1220}

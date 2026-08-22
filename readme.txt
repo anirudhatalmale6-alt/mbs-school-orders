@@ -301,3 +301,53 @@ The Sharks form is currently set to "Logo placement: Beside the heading
 headline. If you want the big version — roughly three times the size, in its own
 column — open the form under School Order Forms and change "Logo placement" to
 "On the right, large". Both placements clear the site header from 1.3.4.
+
+== Reordering products (1.4.0) ==
+Open a form under WooCommerce > Order Forms and you'll see a new "Order" column
+on both the Packages table and the Add-on items table. Drag a row by the grip, or
+use the small up/down arrows, and the order form follows.
+
+Nothing stores a position number — the rows are saved in the order they sit in on
+screen. So there is no separate ordering field to get out of step with the list,
+and a row you add and then move needs nothing special done to it.
+
+One thing to know about the Add-on items table. The order form draws items under
+their Group heading, and a group appears where its first item appears. So when
+you save, items are tidied into group order. If you drag a Keepsakes row above
+the first Prints row, the whole Keepsakes group moves above Prints — which is
+usually what you meant. To move an item into a different group, change its Group
+field rather than dragging it.
+
+== Asking a question about an item (1.4.0) ==
+Both tables now have an "Ask a question" column. Type the question you want the
+buyer to answer, and tick "answer required" if the item can't be made without it.
+
+This is for anything made to order — the Laser Wood Engraving, the Custom Laser
+Dog Tags, the Player ID Helmet Earrings, the Custom Bronze Player Coin. Before
+this there was nowhere on the form for a parent to say what goes ON those items;
+the only free-text box was the general "Notes / special requests" at the bottom,
+which is easy to miss and arrives as a lump of text with no link to any item.
+
+How it behaves:
+
+ - The question appears under that item the moment the parent adds one, and
+   disappears again if they take it away. What they typed is kept if they change
+   their mind and add it back.
+ - Marked required, the form will not let them check out with it blank, and it
+   says which question it means. The same rule is enforced on the server, so it
+   cannot be got around.
+ - The answer shows in the cart and at checkout labelled with the item, e.g.
+   "Custom Laser Dog Tags: JORDAN 12".
+ - It is saved on the order, so it is on the order screen and in the
+   confirmation email.
+ - It has its own "Answer" column in the Manufacturing Export, right next to the
+   Item column — so the engraving text is on the same row as the thing being
+   engraved.
+
+Leave the question blank and that item behaves exactly as it always has.
+
+Packages can carry a question too, for something like a plaque package where you
+need the name that goes on the plaque.
+
+Editing an athlete already in the cart brings the answers back with everything
+else, so fixing a jersey number can't quietly wipe an engraving instruction.

@@ -4,6 +4,9 @@
   var P = MBS.program;
   var $ = function (id) { return document.getElementById(id); };
   var money = function (n) { return '$' + Number(n).toFixed(2); };
+  // Item names and questions are typed by a human into an admin box and land in innerHTML.
+  // The admin already strips tags on save; this is the second lock on the same door.
+  var esc = function (v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
 
   // Flatten add-ons + keep group order
   var ADDONS = P.addons || [];
@@ -239,7 +242,56 @@
       '<div><div style="font-weight:700;font-size:16px">' + p.name + '</div><div class="inc">' + p.inc + '</div>' +
       (p.value === 'NONE' ? '' : '<button class="seebtn" type="button" style="margin-top:9px" data-lb="' + p.name + ' — sample" data-img="' + (p.imgUrl || '') + '">' + CAM + ' See sample</button>') +
       '</div><div class="pr">' + (p.price ? money(p.price) : '—') + '</div>';
+    renderPkgQuestion(p);
     renderLive();
+  }
+  /* A package can carry a question too (a plaque package needs the name on the plaque).
+     It is rebuilt whenever the choice changes, so whatever was typed for the PREVIOUS
+     package is kept aside and put back if they change their mind and come back to it. */
+  var pkgAnswers = {};
+  function renderPkgQuestion(p) {
+    var box = $('pkgQ');
+    if (!box) return;
+    var cur = $('qa_pkg');
+    if (cur) pkgAnswers[cur.getAttribute('data-forpkg')] = cur.value;
+    if (!p || p.value === 'NONE' || !p.q) { box.innerHTML = ''; box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.innerHTML = '<label class="fld item-q"><span class="lab">' + esc(p.q) + (p.qreq ? ' <span class="req">*</span>' : '') +
+      '</span><input class="inp" id="qa_pkg" maxlength="200" data-forpkg="' + esc(p.value) + '" placeholder="' + (p.qreq ? 'required' : 'optional') + '"></label>';
+    $('qa_pkg').value = pkgAnswers[p.value] || '';
+  }
+
+  /* Every answer on the form right now, as { itemId: text }. The package answer travels
+     under the key "__pkg" — a reserved word an add-on id can never be, because ids come
+     from sanitize_key and leading underscores are stripped. */
+  function collectAnswers() {
+    var out = {};
+    ADDONS.forEach(function (a) {
+      if (!a.q || !(qty[a.id] > 0)) return;
+      var el = $('qa_' + a.id);
+      if (el && el.value.trim() !== '') out[a.id] = el.value.trim();
+    });
+    var pq = $('qa_pkg');
+    if (pq && pq.value.trim() !== '') out['__pkg'] = pq.value.trim();
+    return out;
+  }
+
+  /* The first unanswered REQUIRED question, or null. Returned as the element plus the
+     question, so the caller can focus it and say which one it means — "please answer the
+     question" is useless on a form with four of them. */
+  function missingAnswer() {
+    var p = curPkg();
+    if (p.value !== 'NONE' && p.q && p.qreq) {
+      var pq = $('qa_pkg');
+      if (pq && pq.value.trim() === '') return { el: pq, q: p.q };
+    }
+    for (var i = 0; i < ADDONS.length; i++) {
+      var a = ADDONS[i];
+      if (!a.q || !a.qreq || !(qty[a.id] > 0)) continue;
+      var el = $('qa_' + a.id);
+      if (el && el.value.trim() === '') return { el: el, q: a.q };
+    }
+    return null;
   }
   function renderAddons() {
     var groups = [];
@@ -256,6 +308,14 @@
         if (a.buddy) {
           h += '<label class="fld buddy-names" id="buddyWrap" style="display:none"><span class="lab">Name(s) of buddies <span class="req">*</span></span><input class="inp" id="fBuddy" placeholder="e.g. Sam Lee, Chris Ray"></label>';
         }
+        // Made-to-order items (an engraving, a dog tag, a plaque) carry a question. It stays
+        // hidden until the item is actually in the order — asking what to engrave on
+        // something nobody is buying is just noise on a long form.
+        if (a.q) {
+          h += '<label class="fld item-q" id="qw_' + a.id + '" style="display:none">' +
+               '<span class="lab">' + esc(a.q) + (a.qreq ? ' <span class="req">*</span>' : '') + '</span>' +
+               '<input class="inp" id="qa_' + a.id + '" maxlength="200" data-ans="' + a.id + '" placeholder="' + (a.qreq ? 'required' : 'optional') + '"></label>';
+        }
       });
       h += '</div>';
     });
@@ -266,7 +326,14 @@
     $('q_' + id).textContent = qty[id];
     $('ad_' + id).classList.toggle('on', qty[id] > 0);
     if (byId[id] && byId[id].buddy && $('buddyWrap')) $('buddyWrap').style.display = qty[id] > 0 ? 'block' : 'none';
+    showQ(id, qty[id] > 0);
     renderLive();
+  }
+  // Reveal (or hide) an item's question. Hiding does NOT clear what was typed: nudging a
+  // quantity down to zero and back up again should not cost somebody their engraving text.
+  function showQ(id, on) {
+    var w = $('qw_' + id);
+    if (w) w.style.display = on ? 'block' : 'none';
   }
   function selectedAddons() {
     return ADDONS.filter(function (a) { return qty[a.id] > 0; }).map(function (a) {
@@ -288,7 +355,18 @@
 
   /* ---------- toast ---------- */
   var toastT;
-  function toast(m) { $('toastMsg').textContent = m; $('toast').classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function () { $('toast').classList.remove('show'); }, 2400); }
+  /* Every message used to arrive under a green tick, including "please fill in phone" and
+     "what would you like engraved?" — a tick on a message telling somebody they've missed
+     something reads as though it went through. The tick is now opt-in. */
+  function toast(m, ok) {
+    $('toastMsg').textContent = m;
+    var tick = $('toast').querySelector('svg');
+    if (tick) tick.style.display = ok ? '' : 'none';
+    $('toast').classList.toggle('warn', !ok);
+    $('toast').classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { $('toast').classList.remove('show'); }, ok ? 2400 : 3600);
+  }
 
   /* ---------- add to cart (AJAX -> WooCommerce) ---------- */
   function addToCart() {
@@ -330,6 +408,14 @@
     if (!p.price && !ad.length) { toast('Pick a package or add at least one item'); return; }
     buddyNames = $('fBuddy') ? $('fBuddy').value.trim() : '';
     if (qty['buddy'] > 0 && !buddyNames) { $('fBuddy').style.borderColor = 'var(--scarlet)'; $('fBuddy').focus(); toast('Please enter the buddy name(s)'); return; }
+    var missQ = missingAnswer();
+    if (missQ) {
+      missQ.el.style.borderColor = 'var(--scarlet)';
+      missQ.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      missQ.el.focus();
+      toast(missQ.q);
+      return;
+    }
 
     var qmap = {};
     ad.forEach(function (a) { qmap[a.id] = a.q; });
@@ -342,6 +428,7 @@
     body.set('program', MBS.programKey);
     body.set('pkg', p.value);
     body.set('addons', JSON.stringify(qmap));
+    body.set('answers', JSON.stringify(collectAnswers()));
     body.set('athlete', af + ' ' + al);
     body.set('parent', pf + ' ' + pl);
     body.set('jersey', $('fJersey').value.trim());
@@ -363,7 +450,15 @@
         if (!res || !res.success) { toast((res && res.data) ? res.data : 'Could not add to cart'); return; }
         if (res.data.count != null) $('cartCount').textContent = res.data.count;
         // reset item selections; keep contact ready for the next athlete
-        ADDONS.forEach(function (a) { qty[a.id] = 0; if ($('q_' + a.id)) $('q_' + a.id).textContent = '0'; if ($('ad_' + a.id)) $('ad_' + a.id).classList.remove('on'); });
+        ADDONS.forEach(function (a) {
+          qty[a.id] = 0;
+          if ($('q_' + a.id)) $('q_' + a.id).textContent = '0';
+          if ($('ad_' + a.id)) $('ad_' + a.id).classList.remove('on');
+          // This one DOES clear: the next athlete's dog tag needs the next athlete's name.
+          if ($('qa_' + a.id)) $('qa_' + a.id).value = '';
+          showQ(a.id, false);
+        });
+        pkgAnswers = {}; if ($('qa_pkg')) $('qa_pkg').value = '';
         buddyNames = ''; if ($('fBuddy')) { $('fBuddy').value = ''; if ($('buddyWrap')) $('buddyWrap').style.display = 'none'; }
         $('fAthFirst').value = ''; $('fAthLast').value = ''; $('fJersey').value = '';
         if ($('fNotes')) $('fNotes').value = '';
@@ -371,7 +466,7 @@
         saveForm();  // persist the kept contact info + cleared athlete fields for the next athlete
         // If we were editing an existing cart line, go straight back to the cart.
         if (editKey) { window.location.href = (res.data && res.data.cartUrl) || MBS.cartUrl || $('mbsCartBtn').href; return; }
-        toast('Added to cart ✓');
+        toast('Added to cart', true);
         $('mbsAddedMsg').textContent = af + ' ' + al + ' added to cart';
         $('mbsAdded').style.display = 'block';
       })
@@ -385,6 +480,9 @@
     try {
       var data = {};
       PERSIST.forEach(function (id) { var el = $(id); if (el) data[id] = el.value; });
+      // Answers ride along under their own key. The PERSIST list is fixed ids; these are
+      // one per item and change whenever the school's item list does.
+      data._ans = collectAnswers();
       localStorage.setItem(LSKEY, JSON.stringify(data));
     } catch (e) {}
   }
@@ -401,6 +499,11 @@
         } else {
           el.value = data[id];
         }
+      });
+      var ans = data._ans || {};
+      Object.keys(ans).forEach(function (id) {
+        if (id === '__pkg') { pkgAnswers[$('fPkg') ? $('fPkg').value : ''] = ans[id]; return; }
+        var el = $('qa_' + id); if (el) el.value = ans[id];
       });
     } catch (e) {}
   }
@@ -428,6 +531,14 @@
         if ($('q_' + id)) $('q_' + id).textContent = q;
         if ($('ad_' + id)) $('ad_' + id).classList.toggle('on', q > 0);
       }
+    });
+    Object.keys(am).forEach(function (id) { showQ(id, (parseInt(am[id], 10) || 0) > 0); });
+    // Put the answers back. Without this, editing a cart line to fix a jersey number would
+    // silently wipe the engraving text the buyer typed — and nothing on screen would say so.
+    var ans = f.answers || {};
+    Object.keys(ans).forEach(function (id) {
+      if (id === '__pkg') { pkgAnswers[f.pkg] = ans[id]; if ($('qa_pkg')) $('qa_pkg').value = ans[id]; return; }
+      var el = $('qa_' + id); if (el) el.value = ans[id];
     });
     if (qty['buddy'] > 0 && $('buddyWrap')) { $('buddyWrap').style.display = 'block'; if (f.buddy != null && $('fBuddy')) $('fBuddy').value = f.buddy; }
     $('mbsAddBtn').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg> Update This ' + (P.whoLabel || 'Athlete') + ' · <span id="addPrice">' + money(orderTotal()) + '</span>';

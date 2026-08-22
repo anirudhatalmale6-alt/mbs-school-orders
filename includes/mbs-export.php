@@ -6,9 +6,11 @@
  * screens show every order as the same product. The real per-family selections
  * live in each line item's meta ("Order details", Athlete, Parent, Email, ...).
  * This module reads that meta and produces two CSVs:
- *   - Detailed : one row PER ITEM PER FAMILY (School, Item, Qty, Athlete, Team,
- *                Parent, Email, Phone, Order #, Date, Status) — filter by Item
- *                in Excel to see every family that bought a given product.
+ *   - Detailed : one row PER ITEM PER FAMILY (School, Item, Qty, Answer, Athlete,
+ *                Team, Parent, Email, Phone, Order #, Date, Status) — filter by Item
+ *                in Excel to see every family that bought a given product. "Answer" is
+ *                what the buyer typed for a made-to-order item (the engraving text, the
+ *                name on the plaque), so it reads on the same row as the item itself.
  *   - Summary  : one row PER ITEM (School, Item, Total Qty, # of families).
  *
  * Works on orders placed BEFORE this update by parsing the "Order details"
@@ -127,10 +129,13 @@ function mbs_export_run() {
             fputcsv($out, array($a['school'], $a['item'], $a['qty'], count($a['fam'])));
         }
     } else {
-        fputcsv($out, array('School / Program', 'Item', 'Qty', 'Athlete', 'Jersey', 'Team', 'Parent', 'Email', 'Phone', 'Address', 'Notes', 'Order #', 'Date', 'Status'));
+        // "Answer" sits right after the item, not out at the end past nine other columns:
+        // for anything made to order it IS the instruction, and it has to be readable on the
+        // same glance as the thing being made.
+        fputcsv($out, array('School / Program', 'Item', 'Qty', 'Answer', 'Athlete', 'Jersey', 'Team', 'Parent', 'Email', 'Phone', 'Address', 'Notes', 'Order #', 'Date', 'Status'));
         foreach ($rows as $r) {
             fputcsv($out, array(
-                $r['school'], $r['item'], $r['qty'], $r['athlete'], $r['jersey'], $r['team'],
+                $r['school'], $r['item'], $r['qty'], $r['answer'], $r['athlete'], $r['jersey'], $r['team'],
                 $r['parent'], $r['email'], $r['phone'], $r['address'], $r['notes'], $r['order'], $r['date'], $r['status'],
             ));
         }
@@ -188,6 +193,16 @@ function mbs_export_collect($statuses, $from, $to, $school_f) {
             $phone  = (string) $item->get_meta('Phone');
             $notes  = (string) $item->get_meta('Notes');
 
+            // Per-item answers ("What would you like engraved?"), keyed by item name so each
+            // one lands on its own row below. Orders placed before this existed simply have
+            // none, and the column comes out blank for them.
+            $answers = array();
+            $rawa = $item->get_meta('_mbs_answers');
+            if ($rawa) {
+                $deca = json_decode($rawa, true);
+                if (is_array($deca)) foreach ($deca as $k => $v) $answers[(string) $k] = (string) $v;
+            }
+
             // School / program: exact meta first, else the item-name prefix "Program — Athlete".
             $school = (string) $item->get_meta('_mbs_school');
             if ($school === '') {
@@ -219,6 +234,7 @@ function mbs_export_collect($statuses, $from, $to, $school_f) {
             foreach ($items as $it) {
                 $rows[] = array(
                     'school' => $school, 'item' => $it['name'], 'qty' => $it['qty'],
+                    'answer' => isset($answers[$it['name']]) ? $answers[$it['name']] : '',
                     'athlete' => $athlete, 'jersey' => $jersey, 'team' => $team,
                     'parent' => $parent, 'email' => $email, 'phone' => $phone,
                     'address' => $address, 'notes' => $notes,

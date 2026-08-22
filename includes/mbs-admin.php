@@ -364,7 +364,15 @@ function mbs_admin_edit_screen() {
     }
 
     wp_enqueue_media();
+    // Core-registered, so this is a handle not a dependency we ship. The reorder arrows
+    // work without it; this only adds drag.
+    wp_enqueue_script('jquery-ui-sortable');
     ?>
+    <style>
+        .mbs-drop td { height: 46px; background: #f0f6fc; }
+        .mbs-sortable tbody tr.ui-sortable-helper { box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+        .mbs-q input[type=text] { font-size: 12px; }
+    </style>
     <div class="wrap">
         <h1><?php echo $is_new ? 'Add New Order Form' : 'Edit ' . esc_html($p['name'] !== '' ? $p['name'] : $key); ?></h1>
 
@@ -642,17 +650,20 @@ function mbs_admin_edit_screen() {
 
             <h2 class="title">Packages</h2>
             <p class="description">
+                Drag the grip (or use the arrows) to change the order they appear in on the form.
                 Untick <em>Show</em> to hide a package without deleting it. Parents can always choose "no package" and order individual items.
                 In <em>What's included</em>, put <code>**stars around text**</code> to make it bold on the order form.
             </p>
-            <table class="widefat striped" id="mbs-pkgs">
+            <table class="widefat striped mbs-sortable" id="mbs-pkgs">
                 <thead>
                     <tr>
+                        <th style="width:56px">Order</th>
                         <th style="width:60px">Show</th>
                         <th style="width:70px">Tag</th>
                         <th style="width:180px">Name</th>
                         <th style="width:100px">Price</th>
                         <th>What's included</th>
+                        <th style="width:230px">Ask a question</th>
                         <th style="width:90px">Photo</th>
                         <th style="width:60px"></th>
                     </tr>
@@ -671,16 +682,28 @@ function mbs_admin_edit_screen() {
 
             <h2 class="title">Add-on items</h2>
             <p class="description">
-                Everything a parent can buy on its own. Untick <em>Show</em> to take an item off sale for this school
-                without losing it. <em>Buddy</em> makes the form ask for the other child's name.
+                Everything a parent can buy on its own. Drag the grip (or use the arrows) to change the order.
+                Items are shown on the form under their <em>Group</em> heading, so on saving they are tidied into
+                group order — moving a row above the first row of another group moves that whole group up.
+                Untick <em>Show</em> to take an item off sale for this school without losing it.
+                <em>Buddy</em> makes the form ask for the other child's name.
             </p>
-            <table class="widefat striped" id="mbs-addons">
+            <p class="description" style="border-left:4px solid #2271b1;background:#f0f6fc;padding:8px 12px;max-width:820px">
+                <strong>Ask a question</strong> is for anything you have to make to order — an engraving, a dog tag,
+                a coin, a plaque. Type the question you want the buyer to answer ("What would you like engraved?")
+                and it appears under that item on the form the moment they add one. The answer travels through to the
+                order, the confirmation email, and its own column in the Manufacturing Export, so it lands next to the
+                item on the sheet you work from. Leave it blank and nothing changes.
+            </p>
+            <table class="widefat striped mbs-sortable" id="mbs-addons">
                 <thead>
                     <tr>
+                        <th style="width:56px">Order</th>
                         <th style="width:60px">Show</th>
                         <th style="width:170px">Group</th>
                         <th>Item name</th>
                         <th style="width:100px">Price</th>
+                        <th style="width:230px">Ask a question</th>
                         <th style="width:70px">Buddy</th>
                         <th style="width:90px">Photo</th>
                         <th style="width:60px"></th>
@@ -757,6 +780,49 @@ function mbs_admin_edit_screen() {
             var tr = b.closest('tr');
             if (tr && confirm('Remove this row?')) tr.parentNode.removeChild(tr);
         });
+
+        /* ---- reorder ----
+         * Nothing stores a position number. The rows POST in DOM order and are saved in
+         * that order, so moving the <tr> IS the edit — which also means a row added and
+         * then moved needs no special handling, and there is no ordering field to drift
+         * out of step with the list.
+         *
+         * The arrows are the dependable half: they are this file and nothing else. The
+         * drag grip is layered on top only if jQuery UI sortable is actually there, so a
+         * site where it isn't still reorders perfectly well. */
+        document.addEventListener('click', function (e) {
+            var up = e.target.closest ? e.target.closest('.mbs-up') : null;
+            var dn = e.target.closest ? e.target.closest('.mbs-down') : null;
+            if (!up && !dn) return;
+            e.preventDefault();
+            var tr = (up || dn).closest('tr'), tb = tr && tr.parentNode;
+            if (!tb) return;
+            if (up && tr.previousElementSibling) tb.insertBefore(tr, tr.previousElementSibling);
+            if (dn && tr.nextElementSibling)     tb.insertBefore(tr.nextElementSibling, tr);
+            flash(tr);
+        });
+        function flash(tr) {
+            if (!tr) return;
+            tr.style.transition = 'background-color .45s';
+            tr.style.backgroundColor = '#fff3cd';
+            setTimeout(function () { tr.style.backgroundColor = ''; }, 450);
+        }
+        if (window.jQuery && jQuery.fn && jQuery.fn.sortable) {
+            jQuery('.mbs-sortable tbody').sortable({
+                handle: '.mbs-grip',
+                axis: 'y',
+                helper: function (e, tr) {
+                    // Without this the cells collapse to their content while dragging,
+                    // because a floating <tr> has lost the table that sized it.
+                    var w = tr.children().map(function () { return jQuery(this).outerWidth(); }).get();
+                    var c = tr.clone();
+                    c.children().each(function (i) { jQuery(this).width(w[i]); });
+                    return c;
+                },
+                placeholder: 'mbs-drop',
+                forcePlaceholderSize: true
+            });
+        }
 
         // Echo the shortcode key as it's typed.
         var k = document.getElementById('mbs_key'), ke = document.getElementById('mbs_key_echo');
@@ -858,6 +924,70 @@ function mbs_admin_edit_screen() {
 
 /* ---- row renderers (shared by PHP render + the JS "add row" template) ---- */
 
+/**
+ * Tidy the saved add-on order into GROUP order.
+ *
+ * The form draws items under their group heading, and a group's place is decided by where
+ * its first item falls. Without this, an admin list of A, B, A would render as A, A, B and
+ * the order you dragged the rows into would not be the order on the page. Sorting here —
+ * stable, by the group's first appearance — keeps the admin table and the form identical,
+ * and still lets you move a whole group by dragging one of its rows past another group.
+ */
+function mbs_sort_addons_by_group($addons) {
+    $order = array();
+    foreach ($addons as $a) {
+        $g = (string) ($a['group'] ?? '');
+        if (!array_key_exists($g, $order)) $order[$g] = count($order);
+    }
+    // Decorate with the original index so equal groups keep the order they were dragged into
+    // (usort is not stable on every PHP version this plugin has to run on).
+    $tmp = array();
+    foreach ($addons as $i => $a) $tmp[] = array($order[(string) ($a['group'] ?? '')], $i, $a);
+    usort($tmp, function ($x, $y) { return $x[0] === $y[0] ? ($x[1] <=> $y[1]) : ($x[0] <=> $y[0]); });
+    $out = array();
+    foreach ($tmp as $t) $out[] = $t[2];
+    return $out;
+}
+
+/**
+ * The reorder handle. Order is not stored as a number anywhere — the rows POST in DOM
+ * order and are saved in that order, so moving a <tr> IS the edit. The arrows are the
+ * reliable path (they need nothing but this file); the grip is a nicety on top.
+ */
+function mbs_move_cell() {
+    return '<td class="mbs-move" style="width:56px;white-space:nowrap;text-align:center;cursor:grab">'
+         // A plain character, not a dashicon: a dashicons class with no glyph inside renders as
+         // an empty span, so if that stylesheet ever isn't on the screen the drag handle is
+         // invisible and only the arrows are left. This always draws something.
+         . '<span class="mbs-grip" title="Drag to reorder" style="color:#8c8f94;cursor:grab;font-size:15px;line-height:1;vertical-align:middle;user-select:none">&#10303;</span>'
+         . '<button type="button" class="button-link mbs-up" title="Move up" style="text-decoration:none;padding:0 3px">&#9650;</button>'
+         . '<button type="button" class="button-link mbs-down" title="Move down" style="text-decoration:none;padding:0 3px">&#9660;</button>'
+         . '</td>';
+}
+
+/**
+ * The "ask a question" cell, shared by package and add-on rows.
+ *
+ * This is the field that makes an engraving, a dog tag or a coin orderable at all: without
+ * it there is nowhere for the buyer to say what goes ON the thing. Leave it blank and the
+ * item behaves exactly as it did before.
+ */
+function mbs_question_cell($base, $a) {
+    $q    = isset($a['q']) ? (string) $a['q'] : '';
+    $qreq = !empty($a['qreq']);
+    ob_start(); ?>
+    <td class="mbs-q">
+        <input type="text" name="<?php echo esc_attr($base); ?>[q]" value="<?php echo esc_attr($q); ?>"
+               style="width:100%" maxlength="120" placeholder="e.g. What would you like engraved?">
+        <label style="font-size:12px;color:#646970;display:block;margin-top:3px">
+            <input type="checkbox" name="<?php echo esc_attr($base); ?>[qreq]" value="1" <?php checked($qreq); ?>>
+            answer required
+        </label>
+    </td>
+    <?php
+    return ob_get_clean();
+}
+
 /** The Photo cell used by both package and add-on rows. */
 function mbs_photo_cell($name, $value) {
     $url = mbs_asset_url($value);
@@ -875,9 +1005,10 @@ function mbs_photo_cell($name, $value) {
 }
 
 function mbs_pkg_row_html($i, $tag, $pk) {
-    $pk = array_merge(array('name' => '', 'price' => '', 'inc' => '', 'img' => '', 'off' => 0), (array) $pk);
+    $pk = array_merge(array('name' => '', 'price' => '', 'inc' => '', 'img' => '', 'q' => '', 'qreq' => 0, 'off' => 0), (array) $pk);
     ob_start(); ?>
     <tr>
+        <?php echo mbs_move_cell(); // phpcs:ignore — fixed markup ?>
         <td><input type="checkbox" name="packages[<?php echo esc_attr($i); ?>][on]" value="1" <?php checked(empty($pk['off'])); ?>></td>
         <td><input type="text" name="packages[<?php echo esc_attr($i); ?>][tag]" value="<?php echo esc_attr($tag); ?>" style="width:100%" maxlength="6" placeholder="A"></td>
         <td><input type="text" name="packages[<?php echo esc_attr($i); ?>][name]" value="<?php echo esc_attr($pk['name']); ?>" style="width:100%" placeholder="Package A"></td>
@@ -885,6 +1016,7 @@ function mbs_pkg_row_html($i, $tag, $pk) {
         <td>
             <input type="text" name="packages[<?php echo esc_attr($i); ?>][inc]" value="<?php echo esc_attr(mbs_inc_to_editor($pk['inc'])); ?>" style="width:100%" placeholder="2 × 5×7 prints · 8 wallets">
         </td>
+        <?php echo mbs_question_cell('packages[' . $i . ']', $pk); ?>
         <?php echo mbs_photo_cell('packages[' . $i . '][img]', $pk['img']); ?>
         <td><button type="button" class="button-link mbs-del-row" style="color:#b32d2e">Remove</button></td>
     </tr>
@@ -896,9 +1028,10 @@ function mbs_render_pkg_row($i, $tag, $pk) {
 }
 
 function mbs_addon_row_html($i, $a) {
-    $a = array_merge(array('group' => '', 'id' => '', 't' => '', 'p' => '', 'img' => '', 'buddy' => 0, 'off' => 0), (array) $a);
+    $a = array_merge(array('group' => '', 'id' => '', 't' => '', 'p' => '', 'img' => '', 'q' => '', 'qreq' => 0, 'buddy' => 0, 'off' => 0), (array) $a);
     ob_start(); ?>
     <tr>
+        <?php echo mbs_move_cell(); // phpcs:ignore — fixed markup ?>
         <td><input type="checkbox" name="addons[<?php echo esc_attr($i); ?>][on]" value="1" <?php checked(empty($a['off'])); ?>></td>
         <td><input type="text" name="addons[<?php echo esc_attr($i); ?>][group]" value="<?php echo esc_attr($a['group']); ?>" style="width:100%" list="mbs-groups" placeholder="Prints &amp; Wallets"></td>
         <td>
@@ -906,6 +1039,7 @@ function mbs_addon_row_html($i, $a) {
             <input type="hidden" name="addons[<?php echo esc_attr($i); ?>][id]" value="<?php echo esc_attr($a['id']); ?>">
         </td>
         <td><input type="number" step="0.01" min="0" name="addons[<?php echo esc_attr($i); ?>][p]" value="<?php echo esc_attr($a['p']); ?>" style="width:100%"></td>
+        <?php echo mbs_question_cell('addons[' . $i . ']', $a); ?>
         <td style="text-align:center"><input type="checkbox" name="addons[<?php echo esc_attr($i); ?>][buddy]" value="1" <?php checked(!empty($a['buddy'])); ?>></td>
         <?php echo mbs_photo_cell('addons[' . $i . '][img]', $a['img']); ?>
         <td><button type="button" class="button-link mbs-del-row" style="color:#b32d2e">Remove</button></td>
@@ -990,12 +1124,17 @@ function mbs_handle_save_program() {
         if ($tag === '') $tag = mbs_clean_tag(substr($pname, 0, 3));
         if ($tag === '') $tag = 'P';
         while (isset($packages[$tag])) $tag .= 'X';           // keep tags unique
+        $q = sanitize_text_field(wp_unslash($row['q'] ?? ''));
         $packages[$tag] = array(
             'name'  => $pname !== '' ? $pname : ('Package ' . $tag),
             'tag'   => $tag,
             'price' => round((float) ($row['price'] ?? 0), 2),
             'inc'   => mbs_inc_from_editor(wp_unslash($row['inc'] ?? '')),
             'img'   => sanitize_text_field(wp_unslash($row['img'] ?? '')),
+            'q'     => $q,
+            // "Required" with no question is a trap: nothing is ever asked, so nothing can
+            // be answered, and the form would refuse every order for a reason it never showed.
+            'qreq'  => ($q !== '' && !empty($row['qreq'])) ? 1 : 0,
             'off'   => empty($row['on']) ? 1 : 0,
         );
     }
@@ -1013,17 +1152,20 @@ function mbs_handle_save_program() {
         $id = sanitize_key(wp_unslash($row['id'] ?? ''));
         if ($id === '' || in_array($id, $taken, true)) $id = mbs_make_id($t, $taken);
         $taken[] = $id;
+        $q = sanitize_text_field(wp_unslash($row['q'] ?? ''));
         $addons[] = array(
             'group' => sanitize_text_field(wp_unslash($row['group'] ?? '')),
             'id'    => $id,
             't'     => $t,
             'p'     => round((float) ($row['p'] ?? 0), 2),
             'img'   => sanitize_text_field(wp_unslash($row['img'] ?? '')),
+            'q'     => $q,
+            'qreq'  => ($q !== '' && !empty($row['qreq'])) ? 1 : 0,
             'buddy' => empty($row['buddy']) ? 0 : 1,
             'off'   => empty($row['on']) ? 1 : 0,
         );
     }
-    $prog['addons'] = $addons;
+    $prog['addons'] = mbs_sort_addons_by_group($addons);
 
     /* ---- the order page ---- */
     // Look for a page that already carries this shortcode before offering to make one.

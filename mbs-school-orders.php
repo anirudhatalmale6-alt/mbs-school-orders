@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MBS Order Forms
  * Description: Private online order forms for WooCommerce — schools, clubs, studios and events (Mark Nicholas Photography / Manhattan Beach Studios). Managed under WooCommerce > Order Forms; drop [mbs_order_form program="yourkey"] on a private page.
- * Version:     1.3.4
+ * Version:     1.4.0
  * Author:      Anirudha
  * Requires PHP: 7.2
  * WC requires at least: 5.0
@@ -10,7 +10,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('MBS_SO_VER', '1.3.4');
+define('MBS_SO_VER', '1.4.0');
 define('MBS_SO_DIR', plugin_dir_path(__FILE__));
 define('MBS_SO_URL', plugin_dir_url(__FILE__));
 // Bump when assets/order-thumb.png changes, so installs that are still using OUR
@@ -380,6 +380,16 @@ add_filter('sgo_js_async_exclude', function ($e) { $e[] = 'mbs-order'; return $e
  *  fetch below. Falls back to splitting the combined name for lines saved before
  *  the raw first/last fields existed.
  * ---------------------------------------------------------------------- */
+/** Cart-line answers as { itemId: answer }, the shape the form's inputs expect. */
+function mbs_answer_map($m) {
+    $out = array();
+    foreach ((array) ($m['answers'] ?? array()) as $ans) {
+        $id = (string) ($ans['id'] ?? '');
+        if ($id !== '') $out[$id] = (string) ($ans['a'] ?? '');
+    }
+    return $out ? $out : (object) array();
+}
+
 function mbs_build_edit($m) {
     $af = $m['athFirst'] ?? ''; $al = $m['athLast'] ?? '';
     if ($af === '' && !empty($m['athlete'])) { $p = explode(' ', $m['athlete'], 2); $af = $p[0]; $al = $p[1] ?? ''; }
@@ -393,6 +403,9 @@ function mbs_build_edit($m) {
         'buddy'    => $m['buddy'] ?? '',
         'pkg'      => $m['pkg'] ?? 'NONE',
         'addons'   => !empty($m['addons']) && is_array($m['addons']) ? $m['addons'] : (object) array(),
+        // Keyed by item id, which is what the form's inputs are named after. Rebuilding a
+        // cart line without these would silently drop the engraving text somebody typed.
+        'answers'  => mbs_answer_map($m),
     );
 }
 
@@ -422,6 +435,17 @@ function mbs_ajax_edit_data() {
  * ---------------------------------------------------------------------- */
 add_action('wp_ajax_mbs_add', 'mbs_ajax_add');
 add_action('wp_ajax_nopriv_mbs_add', 'mbs_ajax_add');
+/**
+ * One answer to one per-item question. Kept to a single line and 200 characters: this text
+ * is handed to whoever is engraving it, and a paragraph with newlines in it does not fit on
+ * a dog tag or survive a CSV cell cleanly.
+ */
+function mbs_clean_answer($v) {
+    $v = sanitize_text_field(wp_unslash((string) $v));
+    $v = trim(preg_replace('/\s+/u', ' ', $v));
+    return function_exists('mb_substr') ? mb_substr($v, 0, 200) : substr($v, 0, 200);
+}
+
 function mbs_ajax_add() {
     check_ajax_referer('mbs_add', 'nonce');
 
@@ -438,6 +462,10 @@ function mbs_ajax_add() {
     $pkgKey = sanitize_text_field(wp_unslash($_POST['pkg'] ?? 'NONE'));
     $addons_in = json_decode(wp_unslash($_POST['addons'] ?? '{}'), true);
     if (!is_array($addons_in)) $addons_in = array();
+    // Answers to per-item questions ("What would you like engraved?"), keyed by item id.
+    $answers_in = json_decode(wp_unslash($_POST['answers'] ?? '{}'), true);
+    if (!is_array($answers_in)) $answers_in = array();
+    $answers = array();   // label => array(q, a) — what actually gets stored
 
     $total = 0.0;
     $lines = array();
@@ -447,6 +475,16 @@ function mbs_ajax_add() {
         $pk = $prog['packages'][$pkgKey];
         $total += floatval($pk['price']);
         $lines[] = $pk['name'] . ' — $' . number_format($pk['price'], 2);
+        $ans = mbs_clean_answer($answers_in['__pkg'] ?? '');
+        // Required is enforced HERE as well as in the browser. The whole point of the
+        // question is that the item cannot be made without the answer, so a hand-made
+        // POST must not be able to put an unmakeable thing into the cart.
+        if (!empty($pk['qreq']) && !empty($pk['q']) && $ans === '') {
+            wp_send_json_error($pk['q']);
+        }
+        if (!empty($pk['q']) && $ans !== '') {
+            $answers[] = array('id' => '__pkg', 'item' => $pk['name'], 'q' => $pk['q'], 'a' => $ans);
+        }
     }
 
     // Add-ons (recompute from config)
@@ -466,6 +504,13 @@ function mbs_ajax_add() {
             $lines[] = $a['t'] . ($q > 1 ? ' × ' . $q : '') . ' — $' . number_format($line, 2);
             $addon_qty[$id] = $q;
             if (!empty($a['buddy'])) $has_buddy = true;
+            $ans = mbs_clean_answer($answers_in[$id] ?? '');
+            if (!empty($a['qreq']) && !empty($a['q']) && $ans === '') {
+                wp_send_json_error($a['q']);
+            }
+            if (!empty($a['q']) && $ans !== '') {
+                $answers[] = array('id' => $id, 'item' => $a['t'], 'q' => $a['q'], 'a' => $ans);
+            }
         }
     }
 
@@ -542,6 +587,7 @@ function mbs_ajax_add() {
         'email'    => $email,
         'buddy'    => $buddy,
         'notes'    => $notes,
+        'answers'  => $answers,   // [{item, q, a}] — what to engrave, whose name on the plaque
         'pkey'     => $key,         // which order form this came from (for cart wording)
         'pkg'      => $pkgKey,      // raw selection, for editing later
         'addons'   => $addon_qty,   // raw id => qty, for editing later
@@ -640,6 +686,18 @@ function mbs_item_data($data, $cart_item) {
         foreach ($m['lines'] as $i => $line) {
             $label = ($has_pkg && $i === 0) ? 'Package' : 'Item';
             $data[] = array('name' => $label, 'value' => esc_html($line));
+        }
+    }
+    // Answers to per-item questions. Labelled with the ITEM, not the question, because that
+    // is what the buyer is checking ("dog tags: JORDAN 12") and what the workshop needs.
+    // Plain text with a non-empty key on purpose — WooPay / the Store API render meta as
+    // escaped text, so any tag here shows up literally, and an empty key leaves a stray colon.
+    if (!empty($m['answers']) && is_array($m['answers'])) {
+        foreach ($m['answers'] as $ans) {
+            $label = trim((string) ($ans['item'] ?? ''));
+            if ($label === '') $label = trim((string) ($ans['q'] ?? ''));
+            if ($label === '') $label = 'Your answer';
+            $data[] = array('name' => $label, 'value' => esc_html((string) ($ans['a'] ?? '')));
         }
     }
     if (!empty($m['buddy'])) $data[] = array('name' => 'Buddies', 'value' => esc_html($m['buddy']));
@@ -850,6 +908,13 @@ function mbs_order_line_item($item, $cart_item_key, $values, $order) {
     if (!empty($m['lines'])) $item->add_meta_data('Order details', implode('  |  ', $m['lines']), true);
     if ($m['buddy'])    $item->add_meta_data('Buddies', $m['buddy'], true);
     if (!empty($m['notes'])) $item->add_meta_data('Notes', $m['notes'], true);
+    // Visible on the order and in the confirmation email, labelled by item.
+    if (!empty($m['answers']) && is_array($m['answers'])) {
+        foreach ($m['answers'] as $ans) {
+            $label = trim((string) ($ans['item'] ?? '')) ?: trim((string) ($ans['q'] ?? '')) ?: 'Your answer';
+            $item->add_meta_data($label, (string) ($ans['a'] ?? ''), false);
+        }
+    }
 
     // Hidden, machine-readable copies so the Manufacturing Export is exact
     // (no parsing of the human "Order details" string). Underscore prefix keeps
@@ -867,4 +932,15 @@ function mbs_order_line_item($item, $cart_item_key, $values, $order) {
         if ($name !== '') $exact[] = array('name' => $name, 'qty' => $qty);
     }
     if ($exact) $item->add_meta_data('_mbs_items', wp_json_encode($exact), true);
+    // Keyed by ITEM NAME so the export can put each answer on that item's own row — the
+    // engraving text has to sit next to the thing being engraved, or the sheet is useless.
+    if (!empty($m['answers']) && is_array($m['answers'])) {
+        $amap = array();
+        foreach ($m['answers'] as $ans) {
+            $k = trim((string) ($ans['item'] ?? ''));
+            if ($k === '' || ($ans['a'] ?? '') === '') continue;
+            $amap[$k] = (string) $ans['a'];
+        }
+        if ($amap) $item->add_meta_data('_mbs_answers', wp_json_encode($amap), true);
+    }
 }
